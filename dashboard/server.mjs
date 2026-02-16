@@ -6,6 +6,7 @@
 
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
+import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -124,10 +125,11 @@ function startBot() {
   
   console.log('🚀 Starting bot...');
   
-  const { spawn } = require('child_process');
-  botProcess = spawn('node', ['../bot.mjs'], {
-    cwd: __dirname,
-    stdio: ['ignore', 'pipe', 'pipe']
+  const botPath = path.join(__dirname, '../bot.mjs');
+  botProcess = spawn('node', [botPath], {
+    cwd: path.join(__dirname, '..'),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, JUPITER_API_KEY: '1f76dcbd-dc35-4766-a29e-d81e2b31a7a8' }
   });
   
   botState.running = true;
@@ -203,7 +205,6 @@ function loadState() {
     const stateFile = '../wickbot_state.json';
     if (fs.existsSync(path.join(__dirname, stateFile))) {
       const state = JSON.parse(fs.readFileSync(path.join(__dirname, stateFile), 'utf8'));
-      botState.balance.sol = state.currentCapital || 0;
       botState.position = state.positions?.[0] || null;
     }
     
@@ -221,8 +222,33 @@ function loadState() {
   }
 }
 
+// Fetch real-time balances from blockchain
+async function updateBalances() {
+  return new Promise((resolve) => {
+    const balanceScript = spawn('node', [path.join(__dirname, 'get-balance.mjs')]);
+    let output = '';
+    
+    balanceScript.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    balanceScript.on('close', (code) => {
+      if (code === 0 && output.trim()) {
+        try {
+          const balances = JSON.parse(output.trim());
+          botState.balance.sol = balances.sol || 0;
+          botState.balance.usdc = balances.usdc || 0;
+        } catch (err) {
+          console.error('Error parsing balances:', err.message);
+        }
+      }
+      resolve();
+    });
+  });
+}
+
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`\n🕯️  wickbot Dashboard`);
   console.log(`📊 http://localhost:${PORT}`);
   console.log(`\nControls:`);
@@ -232,10 +258,12 @@ server.listen(PORT, () => {
   console.log(`  - Transfer funds\n`);
   
   loadState();
+  await updateBalances();
   
   // Poll state files every 5 seconds
-  setInterval(() => {
+  setInterval(async () => {
     loadState();
+    await updateBalances();
     broadcast({ type: 'status', data: botState });
   }, 5000);
 });

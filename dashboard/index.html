@@ -314,7 +314,8 @@
           <div class="wallet-info">
             <div>
               <div class="wallet-balance" id="walletBalance">0.0000 SOL</div>
-              <div style="color: #888; margin-top: 5px;" id="walletUSD">$0.00</div>
+              <div class="wallet-balance" id="walletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
+              <div style="color: #888; margin-top: 5px;" id="walletUSD">Total: $0.00</div>
               <div class="wallet-address" id="walletAddress" onclick="copyAddress()">
                 DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
               </div>
@@ -470,10 +471,12 @@
       }
       
       // Update wallet
-      const balance = botState.balance.sol.toFixed(4);
-      const usd = (botState.balance.sol * 200).toFixed(2);
-      document.getElementById('walletBalance').textContent = `${balance} SOL`;
-      document.getElementById('walletUSD').textContent = `$${usd}`;
+      const solBalance = botState.balance.sol.toFixed(4);
+      const usdcBalance = (botState.balance.usdc || 0).toFixed(2);
+      const totalUsd = ((botState.balance.sol * 200) + (botState.balance.usdc || 0)).toFixed(2);
+      document.getElementById('walletBalance').textContent = `${solBalance} SOL`;
+      document.getElementById('walletBalanceUsdc').textContent = `${usdcBalance} USDC`;
+      document.getElementById('walletUSD').textContent = `Total: $${totalUsd}`;
       
       // Update stats
       const totalTrades = botState.stats.wins + botState.stats.losses;

@@ -8,7 +8,7 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 1.0,
+  STARTING_CAPITAL_SOL: 0.2,
   
   // Position Sizing & Risk
   POSITION_SIZE_PCT: 20,        // 20% of capital per trade (0.2 SOL)

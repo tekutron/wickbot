@@ -8,12 +8,16 @@ import { Connection, Keypair, VersionedTransaction } from '@solana/web3.js';
 import fetch from 'node-fetch';
 import fs from 'fs';
 import config from '../config.mjs';
+import { RaydiumSwap } from './raydium-swap.mjs';
 
 export class JupiterSwap {
   constructor() {
     this.connection = null;
     this.wallet = null;
-    this.jupiterApiUrl = 'https://quote-api.jup.ag/v6';
+    this.raydiumSwap = null;
+    this.jupiterQuoteUrl = 'https://ultra.jup.ag/quote';
+    this.jupiterSwapUrl = 'https://ultra.jup.ag/swap';
+    this.jupiterApiKey = process.env.JUPITER_API_KEY || '';
   }
   
   async initialize() {
@@ -27,7 +31,10 @@ export class JupiterSwap {
     const walletData = JSON.parse(fs.readFileSync(config.WALLET_PATH, 'utf8'));
     this.wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
     
-    console.log('✅ Jupiter swap initialized');
+    // Initialize Raydium backup
+    this.raydiumSwap = new RaydiumSwap(this.connection, this.wallet);
+    
+    console.log('✅ Jupiter swap initialized (Raydium backup ready)');
   }
   
   /**
@@ -37,13 +44,14 @@ export class JupiterSwap {
    * @returns {Object} Trade result {success, signature, price, amountOut, amountSol}
    */
   async swapSolToUsdc(signal, amountSol = null) {
+    // Use configured position size if not specified
+    const swapAmount = amountSol || config.STARTING_CAPITAL_SOL * (config.POSITION_SIZE_PCT / 100);
+    const amountLamports = Math.floor(swapAmount * 1e9);
+    
+    console.log(`\n💱 Swapping ${swapAmount.toFixed(4)} SOL → USDC...`);
+    
+    // Try Jupiter first
     try {
-      // Use configured position size if not specified
-      const swapAmount = amountSol || config.STARTING_CAPITAL_SOL * (config.POSITION_SIZE_PCT / 100);
-      const amountLamports = Math.floor(swapAmount * 1e9);
-      
-      console.log(`\n💱 Swapping ${swapAmount.toFixed(4)} SOL → USDC...`);
-      
       // 1. Get quote from Jupiter
       const quote = await this.getQuote(
         config.TOKEN_ADDRESS_SOL,
@@ -52,31 +60,30 @@ export class JupiterSwap {
       );
       
       if (!quote) {
-        return { success: false, error: 'Failed to get quote from Jupiter' };
+        throw new Error('Failed to get quote from Jupiter');
       }
       
       const expectedUsdc = parseInt(quote.outAmount) / 1e6; // USDC has 6 decimals
       const price = expectedUsdc / swapAmount; // Price in USDC per SOL
       
-      console.log(`   Quote: ${expectedUsdc.toFixed(2)} USDC`);
-      console.log(`   Price: $${price.toFixed(2)}/SOL`);
-      console.log(`   Route: ${quote.routePlan?.length || 0} hop(s)`);
+      console.log(`   [Jupiter] Quote: ${expectedUsdc.toFixed(2)} USDC`);
+      console.log(`   [Jupiter] Price: $${price.toFixed(2)}/SOL`);
       
       // 2. Get swap transaction
       const swapTx = await this.getSwapTransaction(quote);
       
       if (!swapTx) {
-        return { success: false, error: 'Failed to build swap transaction' };
+        throw new Error('Failed to build swap transaction');
       }
       
       // 3. Sign and send transaction
       const signature = await this.executeTransaction(swapTx);
       
       if (!signature) {
-        return { success: false, error: 'Failed to execute transaction' };
+        throw new Error('Failed to execute transaction');
       }
       
-      console.log(`   ✅ Swap complete: ${signature}`);
+      console.log(`   ✅ [Jupiter] Swap complete: ${signature}`);
       
       return {
         success: true,
@@ -84,15 +91,42 @@ export class JupiterSwap {
         price: price,
         amountOut: expectedUsdc,
         amountSol: swapAmount,
-        signal: signal
+        signal: signal,
+        source: 'jupiter'
       };
       
-    } catch (err) {
-      console.error(`   ❌ Swap error: ${err.message}`);
-      return {
-        success: false,
-        error: err.message
-      };
+    } catch (jupiterErr) {
+      console.warn(`   ⚠️  Jupiter failed: ${jupiterErr.message}`);
+      console.log(`   🔄 Trying Raydium backup...`);
+      
+      // Fallback to Raydium
+      try {
+        const raydiumResult = await this.raydiumSwap.swapSolToUsdc(swapAmount);
+        
+        if (!raydiumResult.success) {
+          throw new Error(raydiumResult.error);
+        }
+        
+        // Estimate output (Raydium doesn't give us expected output easily)
+        const estimatedUsdc = swapAmount * 200; // Rough estimate at $200/SOL
+        
+        return {
+          success: true,
+          signature: raydiumResult.signature,
+          price: 200,
+          amountOut: estimatedUsdc,
+          amountSol: swapAmount,
+          signal: signal,
+          source: 'raydium'
+        };
+        
+      } catch (raydiumErr) {
+        console.error(`   ❌ Both Jupiter and Raydium failed`);
+        return {
+          success: false,
+          error: `Jupiter: ${jupiterErr.message} | Raydium: ${raydiumErr.message}`
+        };
+      }
     }
   }
   
@@ -103,13 +137,14 @@ export class JupiterSwap {
    * @returns {Object} Trade result
    */
   async swapUsdcToSol(position, amountUsdc = null) {
+    // Use position's USDC amount if not specified
+    const swapAmount = amountUsdc || position.amountUsdc;
+    const amountMicroUsdc = Math.floor(swapAmount * 1e6); // USDC has 6 decimals
+    
+    console.log(`\n💱 Swapping ${swapAmount.toFixed(2)} USDC → SOL...`);
+    
+    // Try Jupiter first
     try {
-      // Use position's USDC amount if not specified
-      const swapAmount = amountUsdc || position.amountUsdc;
-      const amountMicroUsdc = Math.floor(swapAmount * 1e6); // USDC has 6 decimals
-      
-      console.log(`\n💱 Swapping ${swapAmount.toFixed(2)} USDC → SOL...`);
-      
       // 1. Get quote from Jupiter
       const quote = await this.getQuote(
         config.TOKEN_ADDRESS_USDC,
@@ -118,30 +153,30 @@ export class JupiterSwap {
       );
       
       if (!quote) {
-        return { success: false, error: 'Failed to get quote from Jupiter' };
+        throw new Error('Failed to get quote from Jupiter');
       }
       
       const expectedSol = parseInt(quote.outAmount) / 1e9;
       const price = swapAmount / expectedSol; // Price in USDC per SOL
       
-      console.log(`   Quote: ${expectedSol.toFixed(4)} SOL`);
-      console.log(`   Price: $${price.toFixed(2)}/SOL`);
+      console.log(`   [Jupiter] Quote: ${expectedSol.toFixed(4)} SOL`);
+      console.log(`   [Jupiter] Price: $${price.toFixed(2)}/SOL`);
       
       // 2. Get swap transaction
       const swapTx = await this.getSwapTransaction(quote);
       
       if (!swapTx) {
-        return { success: false, error: 'Failed to build swap transaction' };
+        throw new Error('Failed to build swap transaction');
       }
       
       // 3. Sign and send transaction
       const signature = await this.executeTransaction(swapTx);
       
       if (!signature) {
-        return { success: false, error: 'Failed to execute transaction' };
+        throw new Error('Failed to execute transaction');
       }
       
-      console.log(`   ✅ Swap complete: ${signature}`);
+      console.log(`   ✅ [Jupiter] Swap complete: ${signature}`);
       
       return {
         success: true,
@@ -149,15 +184,42 @@ export class JupiterSwap {
         price: price,
         amountOut: expectedSol,
         amountUsdc: swapAmount,
-        position: position
+        position: position,
+        source: 'jupiter'
       };
       
-    } catch (err) {
-      console.error(`   ❌ Swap error: ${err.message}`);
-      return {
-        success: false,
-        error: err.message
-      };
+    } catch (jupiterErr) {
+      console.warn(`   ⚠️  Jupiter failed: ${jupiterErr.message}`);
+      console.log(`   🔄 Trying Raydium backup...`);
+      
+      // Fallback to Raydium
+      try {
+        const raydiumResult = await this.raydiumSwap.swapUsdcToSol(swapAmount);
+        
+        if (!raydiumResult.success) {
+          throw new Error(raydiumResult.error);
+        }
+        
+        // Estimate output
+        const estimatedSol = swapAmount / 200; // Rough estimate at $200/SOL
+        
+        return {
+          success: true,
+          signature: raydiumResult.signature,
+          price: 200,
+          amountOut: estimatedSol,
+          amountUsdc: swapAmount,
+          position: position,
+          source: 'raydium'
+        };
+        
+      } catch (raydiumErr) {
+        console.error(`   ❌ Both Jupiter and Raydium failed`);
+        return {
+          success: false,
+          error: `Jupiter: ${jupiterErr.message} | Raydium: ${raydiumErr.message}`
+        };
+      }
     }
   }
   
@@ -174,13 +236,16 @@ export class JupiterSwap {
         inputMint: inputMint,
         outputMint: outputMint,
         amount: amount.toString(),
-        slippageBps: '50', // 0.5% slippage (conservative)
-        onlyDirectRoutes: 'false',
-        asLegacyTransaction: 'false'
+        slippageBps: '50' // 0.5% slippage (conservative)
       });
       
-      const url = `${this.jupiterApiUrl}/quote?${params}`;
-      const response = await fetch(url);
+      const url = `${this.jupiterQuoteUrl}?${params}`;
+      const response = await fetch(url, {
+        headers: {
+          'X-API-KEY': this.jupiterApiKey,
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -203,9 +268,10 @@ export class JupiterSwap {
    */
   async getSwapTransaction(quote) {
     try {
-      const response = await fetch(`${this.jupiterApiUrl}/swap`, {
+      const response = await fetch(this.jupiterSwapUrl, {
         method: 'POST',
         headers: {
+          'X-API-KEY': this.jupiterApiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

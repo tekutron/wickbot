@@ -6,6 +6,7 @@
 
 import fs from 'fs';
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
+import { getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 import config from '../config.mjs';
 
 export class PositionManager {
@@ -38,14 +39,32 @@ export class PositionManager {
   }
   
   async getBalance() {
+    // Get SOL balance
     const solBalance = await this.connection.getBalance(this.wallet.publicKey);
     const solAmount = solBalance / 1e9;
     
-    // Estimate USD value (rough, for display only)
-    const usdValue = solAmount * 200; // Assuming ~$200/SOL
+    // Get USDC balance
+    let usdcAmount = 0;
+    try {
+      const usdcMint = new PublicKey(config.TOKEN_ADDRESS_USDC);
+      const usdcTokenAccount = await getAssociatedTokenAddress(
+        usdcMint,
+        this.wallet.publicKey
+      );
+      
+      const accountInfo = await getAccount(this.connection, usdcTokenAccount);
+      usdcAmount = Number(accountInfo.amount) / 1e6; // USDC has 6 decimals
+    } catch (err) {
+      // USDC account doesn't exist yet (no trades yet)
+      usdcAmount = 0;
+    }
+    
+    // Estimate total USD value
+    const usdValue = (solAmount * 200) + usdcAmount; // Assuming ~$200/SOL
     
     return {
       sol: solAmount,
+      usdc: usdcAmount,
       usd: usdValue
     };
   }
