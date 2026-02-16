@@ -785,6 +785,11 @@
       
       // Load initial data
       loadChartData();
+      
+      // Refresh chart every 45 seconds (matches bot polling)
+      setInterval(() => {
+        loadChartData();
+      }, 45000);
     }
     
     async function loadChartData() {
