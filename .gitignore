@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Wallets (NEVER commit private keys!)
+wallets/*.json
+!wallets/.gitkeep
+
+# Logs
+logs/*.log
+*.log
+
+# State files
+wickbot_state.json
+wickbot_trades.json
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

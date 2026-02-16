@@ -1,0 +1,20 @@
+{
+  "name": "wickbot",
+  "version": "0.1.0",
+  "description": "Automated candle pattern trading bot for Solana",
+  "type": "module",
+  "main": "bot.mjs",
+  "scripts": {
+    "start": "node bot.mjs",
+    "dashboard": "node dashboard/server.mjs",
+    "test": "node test/test-patterns.mjs"
+  },
+  "keywords": ["solana", "trading", "candles", "patterns", "bot"],
+  "author": "Dogesy",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.95.8",
+    "node-fetch": "^3.3.2",
+    "ws": "^8.18.0"
+  }
+}
