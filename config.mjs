@@ -4,23 +4,23 @@
  */
 
 export const config = {
-  // Trading Pair & Capital
+  // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.2,
+  STARTING_CAPITAL_SOL: 0.18,   // 15.31 USDC ≈ 0.18 SOL @ $86/SOL
   
-  // Position Sizing & Risk
-  POSITION_SIZE_PCT: 20,        // 20% of capital per trade (0.2 SOL)
-  MAX_POSITIONS: 1,             // One position at a time
+  // Position Sizing & Risk (OPTIMIZED 2026-02-16)
+  POSITION_SIZE_PCT: 30,        // 30% per trade (~$4.60, better fee efficiency)
+  MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
-  // Signal-based exits (PRIMARY - Feb 15 v6)
+  // Signal-based exits (PRIMARY - pattern/indicator driven)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
-  SIGNAL_EXIT_SCORE: 70,        // Min score for exit signal (same as entry)
+  SIGNAL_EXIT_SCORE: 75,        // Min score for exit (matches entry threshold)
   
-  // Safety stops only (BACKUP - prevent disasters)
-  MAX_PROFIT_PCT: 25,           // Auto-exit at +25% (prevent greed)
-  SAFETY_STOP_LOSS_PCT: 20,     // Hard stop at -20% (catastrophic loss prevention)
+  // Safety stops (BACKUP - prevent disasters, OPTIMIZED)
+  MAX_PROFIT_PCT: 20,           // Auto-exit at +20% (take profit, prevent reversal)
+  SAFETY_STOP_LOSS_PCT: 15,     // Hard stop at -15% (tighter risk control)
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
@@ -34,10 +34,10 @@ export const config = {
   INDICATOR_WEIGHT: 0.4,        // 40% weight for indicators, 60% for patterns (trend matters!)
   REQUIRE_TREND_ALIGNMENT: true, // Require MA crossover confirmation
   
-  // Data Source
+  // Data Source (OPTIMIZED 2026-02-16)
   BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
   BIRDEYE_BASE_URL: 'https://public-api.birdeye.so',
-  POLL_INTERVAL_MS: 60000,      // Fetch new candles every 60 seconds
+  POLL_INTERVAL_MS: 45000,      // Fetch candles every 45s (more responsive, balanced API usage)
   
   // RPC
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
