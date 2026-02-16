@@ -310,22 +310,43 @@
       <!-- Left Column: Chart & Signals -->
       <div>
         <div class="card">
-          <h2>💰 Wallet</h2>
-          <div class="wallet-info">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>💰 Wallets</h2>
+            <select id="walletSelector" onchange="switchWallet()" style="padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0;">
+              <option value="SOL">SOL Wallet</option>
+              <option value="USDC" selected>USDC Wallet (Active)</option>
+            </select>
+          </div>
+          
+          <!-- SOL Wallet -->
+          <div class="wallet-info" id="solWalletInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <div style="color: #888; font-size: 0.9em; margin-bottom: 8px;">SOL Trading Wallet</div>
             <div>
-              <div class="wallet-balance" id="walletBalance">0.0000 SOL</div>
-              <div class="wallet-balance" id="walletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
-              <div style="color: #888; margin-top: 5px;" id="walletUSD">Total: $0.00</div>
-              <div class="wallet-address" id="walletAddress" onclick="copyAddress()">
+              <div class="wallet-balance" id="solWalletBalance">0.0000 SOL</div>
+              <div class="wallet-balance" id="solWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
+              <div style="color: #888; margin-top: 5px;" id="solWalletUSD">Total: $0.00</div>
+              <div class="wallet-address" onclick="copyAddress('sol')">
                 DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
               </div>
             </div>
-            <div style="text-align: right;">
+          </div>
+          
+          <!-- USDC Wallet -->
+          <div class="wallet-info" id="usdcWalletInfo">
+            <div style="color: #888; font-size: 0.9em; margin-bottom: 8px;">USDC Trading Wallet ⭐</div>
+            <div>
+              <div class="wallet-balance" id="usdcWalletBalance">0.0000 SOL</div>
+              <div class="wallet-balance" id="usdcWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
+              <div style="color: #888; margin-top: 5px;" id="usdcWalletUSD">Total: $0.00</div>
+              <div class="wallet-address" onclick="copyAddress('usdc')">
+                82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu
+              </div>
+            </div>
+            <div style="text-align: right; margin-top: 10px;">
               <button class="btn-secondary" onclick="transferFunds()">📤 Transfer</button>
             </div>
           </div>
-        </div>
-        
+        </div>        
         <div class="card" style="margin-top: 20px;">
           <h2>📊 Signal</h2>
           <div class="signal-display">
@@ -408,6 +429,10 @@
     let ws;
     let botState = {
       running: false,
+      wallets: {
+        sol: { sol: 0, usdc: 0 },
+        usdc: { sol: 0, usdc: 0 }
+      },
       balance: { sol: 0, usdc: 0 },
       position: null,
       signal: null,
@@ -470,13 +495,24 @@
         stopBtn.style.display = 'none';
       }
       
-      // Update wallet
-      const solBalance = botState.balance.sol.toFixed(4);
-      const usdcBalance = (botState.balance.usdc || 0).toFixed(2);
-      const totalUsd = ((botState.balance.sol * 200) + (botState.balance.usdc || 0)).toFixed(2);
-      document.getElementById('walletBalance').textContent = `${solBalance} SOL`;
-      document.getElementById('walletBalanceUsdc').textContent = `${usdcBalance} USDC`;
-      document.getElementById('walletUSD').textContent = `Total: $${totalUsd}`;
+      // Update both wallets
+      if (botState.wallets) {
+        // SOL Wallet
+        const solWalletSol = (botState.wallets.sol?.sol || 0).toFixed(4);
+        const solWalletUsdc = (botState.wallets.sol?.usdc || 0).toFixed(2);
+        const solWalletTotal = ((botState.wallets.sol?.sol || 0) * 200 + (botState.wallets.sol?.usdc || 0)).toFixed(2);
+        document.getElementById('solWalletBalance').textContent = `${solWalletSol} SOL`;
+        document.getElementById('solWalletBalanceUsdc').textContent = `${solWalletUsdc} USDC`;
+        document.getElementById('solWalletUSD').textContent = `Total: $${solWalletTotal}`;
+        
+        // USDC Wallet
+        const usdcWalletSol = (botState.wallets.usdc?.sol || 0).toFixed(4);
+        const usdcWalletUsdc = (botState.wallets.usdc?.usdc || 0).toFixed(2);
+        const usdcWalletTotal = ((botState.wallets.usdc?.sol || 0) * 200 + (botState.wallets.usdc?.usdc || 0)).toFixed(2);
+        document.getElementById('usdcWalletBalance').textContent = `${usdcWalletSol} SOL`;
+        document.getElementById('usdcWalletBalanceUsdc').textContent = `${usdcWalletUsdc} USDC`;
+        document.getElementById('usdcWalletUSD').textContent = `Total: $${usdcWalletTotal}`;
+      }
       
       // Update stats
       const totalTrades = botState.stats.wins + botState.stats.losses;
@@ -587,10 +623,31 @@
       console.log(data.message);
     }
     
-    function copyAddress() {
-      const address = document.getElementById('walletAddress').textContent;
+    function copyAddress(wallet) {
+      let address;
+      if (wallet === 'sol') {
+        address = 'DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf';
+      } else if (wallet === 'usdc') {
+        address = '82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu';
+      }
       navigator.clipboard.writeText(address);
-      alert('Address copied!');
+      alert(`${wallet.toUpperCase()} wallet address copied!`);
+    }
+    
+    function switchWallet() {
+      const selector = document.getElementById('walletSelector');
+      const selected = selector.value;
+      
+      const solWallet = document.getElementById('solWalletInfo');
+      const usdcWallet = document.getElementById('usdcWalletInfo');
+      
+      if (selected === 'SOL') {
+        solWallet.style.display = 'block';
+        usdcWallet.style.display = 'none';
+      } else {
+        solWallet.style.display = 'none';
+        usdcWallet.style.display = 'block';
+      }
     }
     
     function transferFunds() {

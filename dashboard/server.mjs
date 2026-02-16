@@ -18,7 +18,11 @@ const PORT = process.env.DASHBOARD_PORT || 3000;
 let botProcess = null;
 let botState = {
   running: false,
-  balance: { sol: 0, usdc: 0 },
+  wallets: {
+    sol: { sol: 0, usdc: 0 },
+    usdc: { sol: 0, usdc: 0 }
+  },
+  balance: { sol: 0, usdc: 0 }, // Legacy, kept for compatibility
   position: null,
   signal: null,
   trades: [],
@@ -225,7 +229,7 @@ function loadState() {
 // Fetch real-time balances from blockchain
 async function updateBalances() {
   return new Promise((resolve) => {
-    const balanceScript = spawn('node', [path.join(__dirname, 'get-balance.mjs')]);
+    const balanceScript = spawn('node', [path.join(__dirname, 'get-both-balances.mjs')]);
     let output = '';
     
     balanceScript.stdout.on('data', (data) => {
@@ -235,9 +239,19 @@ async function updateBalances() {
     balanceScript.on('close', (code) => {
       if (code === 0 && output.trim()) {
         try {
-          const balances = JSON.parse(output.trim());
-          botState.balance.sol = balances.sol || 0;
-          botState.balance.usdc = balances.usdc || 0;
+          const data = JSON.parse(output.trim());
+          if (data.wallets) {
+            data.wallets.forEach(wallet => {
+              if (wallet.name === 'SOL') {
+                botState.wallets.sol = { sol: wallet.sol, usdc: wallet.usdc };
+              } else if (wallet.name === 'USDC') {
+                botState.wallets.usdc = { sol: wallet.sol, usdc: wallet.usdc };
+                // Set active wallet as default balance
+                botState.balance.sol = wallet.sol;
+                botState.balance.usdc = wallet.usdc;
+              }
+            });
+          }
         } catch (err) {
           console.error('Error parsing balances:', err.message);
         }

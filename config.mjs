@@ -41,8 +41,10 @@ export const config = {
   // RPC
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
   
-  // Wallet
-  WALLET_PATH: './wallets/wickbot_wallet.json',
+  // Wallets
+  WALLET_PATH: './wallets/wickbot_wallet.json', // Original SOL wallet
+  USDC_WALLET_PATH: './wallets/wickbot_usdc_wallet.json', // USDC trading wallet
+  ACTIVE_WALLET: process.env.ACTIVE_WALLET || 'USDC', // 'SOL' or 'USDC'
   
   // Dashboard
   DASHBOARD_PORT: 3000,
