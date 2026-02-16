@@ -13,8 +13,15 @@ export const config = {
   // Position Sizing & Risk
   POSITION_SIZE_PCT: 20,        // 20% of capital per trade (0.2 SOL)
   MAX_POSITIONS: 1,             // One position at a time
-  TAKE_PROFIT_PCT: 10,          // Exit at +10%
-  STOP_LOSS_PCT: 5,             // Exit at -5%
+  
+  // Signal-based exits (PRIMARY - Feb 15 v6)
+  USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
+  SIGNAL_EXIT_SCORE: 70,        // Min score for exit signal (same as entry)
+  
+  // Safety stops only (BACKUP - prevent disasters)
+  MAX_PROFIT_PCT: 25,           // Auto-exit at +25% (prevent greed)
+  SAFETY_STOP_LOSS_PCT: 20,     // Hard stop at -20% (catastrophic loss prevention)
+  
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
   // Timeframes

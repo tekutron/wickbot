@@ -12,7 +12,8 @@ Analyzes SOL/USDC price action across multiple timeframes, detects bullish/beari
 - **Starting Capital:** 1 SOL
 - **Timeframes:** 1m, 5m, 15m, 30m, 1h candles
 - **Entry:** Buy lows based on bullish signals (hammer, engulfing, morning star, etc.)
-- **Exit:** Sell highs based on bearish signals (shooting star, evening star, resistance) or take profit
+- **Exit:** Sell when bearish signals trigger (shooting star, evening star, RSI overbought)
+- **Safety:** Max profit cap (+25%) and safety stop (-20%) to prevent disasters
 - **Mode:** Set and forget (automated)
 
 ---

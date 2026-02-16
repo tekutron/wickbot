@@ -132,40 +132,44 @@ export class PositionManager {
       const pnl = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
       const holdTime = Date.now() - position.entryTime;
       
-      // Check take profit
-      if (pnl >= config.TAKE_PROFIT_PCT) {
-        console.log(`\n🎯 TAKE PROFIT HIT! +${pnl.toFixed(2)}%`);
-        
-        if (executeSellCallback && !config.DRY_RUN) {
-          await executeSellCallback(position, currentPrice, 'TP');
-        } else if (config.DRY_RUN) {
-          console.log(`   🧪 DRY-RUN: Would close position at +${pnl.toFixed(2)}%\n`);
-          // In dry-run, just log and remove position
-          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'TP');
-        }
-      }
-      
-      // Check stop loss
-      else if (pnl <= -config.STOP_LOSS_PCT) {
-        console.log(`\n🛑 STOP LOSS HIT! ${pnl.toFixed(2)}%`);
-        
-        if (executeSellCallback && !config.DRY_RUN) {
-          await executeSellCallback(position, currentPrice, 'SL');
-        } else if (config.DRY_RUN) {
-          console.log(`   🧪 DRY-RUN: Would close position at ${pnl.toFixed(2)}%\n`);
-          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'SL');
-        }
-      }
-      
-      // Check bearish signal (manual exit)
-      else if (currentSignal && currentSignal.action === 'sell' && currentSignal.score >= config.MIN_SIGNAL_SCORE) {
-        console.log(`\n📉 BEARISH SIGNAL - Exiting position (${pnl.toFixed(2)}%)`);
+      // Primary exit: SELL signal (pattern-driven)
+      if (config.USE_SIGNAL_EXITS && currentSignal && currentSignal.action === 'sell' && currentSignal.score >= config.SIGNAL_EXIT_SCORE) {
+        console.log(`\n📉 SELL SIGNAL - Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
+        console.log(`   Signal: ${currentSignal.score}/100`);
+        console.log(`   Patterns: ${currentSignal.patterns.join(', ')}`);
+        console.log(`   Reason: ${currentSignal.reason}`);
         
         if (executeSellCallback && !config.DRY_RUN) {
           await executeSellCallback(position, currentPrice, 'SIGNAL');
         } else if (config.DRY_RUN) {
-          console.log(`   🧪 DRY-RUN: Would close position at ${pnl.toFixed(2)}%\n`);
+          console.log(`   🧪 DRY-RUN: Would close position\n`);
           this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'SIGNAL');
+        }
+      }
+      
+      // Safety: Max profit cap (prevent greed)
+      else if (pnl >= config.MAX_PROFIT_PCT) {
+        console.log(`\n🎯 MAX PROFIT CAP! +${pnl.toFixed(2)}%`);
+        console.log(`   Taking profit before reversal`);
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'MAX_PROFIT');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position\n`);
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'MAX_PROFIT');
+        }
+      }
+      
+      // Safety: Stop loss (prevent catastrophic loss)
+      else if (pnl <= -config.SAFETY_STOP_LOSS_PCT) {
+        console.log(`\n🛑 SAFETY STOP LOSS! ${pnl.toFixed(2)}%`);
+        console.log(`   Cutting losses to prevent disaster`);
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'SAFETY_SL');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position\n`);
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'SAFETY_SL');
         }
       }
       
