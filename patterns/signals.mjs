@@ -57,7 +57,7 @@ export class SignalGenerator {
     
     return {
       action: action,
-      score: Math.round(totalScore),
+      score: Math.min(100, Math.round(totalScore)), // Clamp to 100 max
       reason: reason,
       patterns: patternScore.patterns,
       indicators: indicatorScore.signals,
@@ -116,7 +116,7 @@ export class SignalGenerator {
     const totalScore = Math.max(bullishScore, bearishScore) + multiTimeframeBonus;
     
     return {
-      score: totalScore,
+      score: Math.min(100, totalScore), // Clamp to 100 max
       bullish: bullishScore > bearishScore,
       bearish: bearishScore > bullishScore,
       patterns: bullishScore > bearishScore ? bullishPatterns : bearishPatterns,

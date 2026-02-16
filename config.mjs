@@ -27,7 +27,7 @@ export const config = {
   INDICATOR_WEIGHT: 0.3,        // 30% weight for indicators, 70% for patterns
   
   // Data Source
-  BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '',
+  BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
   BIRDEYE_BASE_URL: 'https://public-api.birdeye.so',
   POLL_INTERVAL_MS: 60000,      // Fetch new candles every 60 seconds
   

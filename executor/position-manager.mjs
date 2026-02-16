@@ -5,7 +5,7 @@
  */
 
 import fs from 'fs';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import config from '../config.mjs';
 
 export class PositionManager {
@@ -25,7 +25,7 @@ export class PositionManager {
     }
     
     const walletData = JSON.parse(fs.readFileSync(config.WALLET_PATH, 'utf8'));
-    this.wallet = PublicKey.prototype.constructor.from(walletData);
+    this.wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
     
     // Connect to RPC
     this.connection = new Connection(config.RPC_URL, 'confirmed');
@@ -38,7 +38,7 @@ export class PositionManager {
   }
   
   async getBalance() {
-    const solBalance = await this.connection.getBalance(this.wallet);
+    const solBalance = await this.connection.getBalance(this.wallet.publicKey);
     const solAmount = solBalance / 1e9;
     
     // Estimate USD value (rough, for display only)
