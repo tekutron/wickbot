@@ -334,27 +334,31 @@
           
           <!-- SOL Wallet -->
           <div class="wallet-info" id="solWalletInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
-            <div style="color: #888; font-size: 0.9em; margin-bottom: 8px;">SOL Trading Wallet</div>
             <div>
               <div class="wallet-balance" id="solWalletBalance">0.0000 SOL</div>
-              <div class="wallet-balance" id="solWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
-              <div style="color: #888; margin-top: 5px;" id="solWalletUSD">Total: $0.00</div>
-              <div class="wallet-address" onclick="copyAddress('sol')">
+              <div class="wallet-address" onclick="copyAddress('sol')" style="font-size: 0.75em; margin-top: 5px;">
                 DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
               </div>
+              <div class="wallet-balance" id="solWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 15px;">0.00 USDC</div>
+              <div class="wallet-address" onclick="copyAddress('sol')" style="font-size: 0.75em; margin-top: 5px;">
+                DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
+              </div>
+              <div style="color: #888; margin-top: 10px;" id="solWalletUSD">Total: $0.00</div>
             </div>
           </div>
           
           <!-- USDC Wallet -->
           <div class="wallet-info" id="usdcWalletInfo">
-            <div style="color: #888; font-size: 0.9em; margin-bottom: 8px;">USDC Trading Wallet ⭐</div>
             <div>
               <div class="wallet-balance" id="usdcWalletBalance">0.0000 SOL</div>
-              <div class="wallet-balance" id="usdcWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 8px;">0.00 USDC</div>
-              <div style="color: #888; margin-top: 5px;" id="usdcWalletUSD">Total: $0.00</div>
-              <div class="wallet-address" onclick="copyAddress('usdc')">
+              <div class="wallet-address" onclick="copyAddress('usdc')" style="font-size: 0.75em; margin-top: 5px;">
                 82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu
               </div>
+              <div class="wallet-balance" id="usdcWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 15px;">0.00 USDC</div>
+              <div class="wallet-address" onclick="copyAddress('usdc')" style="font-size: 0.75em; margin-top: 5px;">
+                82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu
+              </div>
+              <div style="color: #888; margin-top: 10px;" id="usdcWalletUSD">Total: $0.00</div>
             </div>
             <div style="text-align: right; margin-top: 10px;">
               <button class="btn-secondary" onclick="transferFunds()">📤 Transfer</button>
