@@ -119,8 +119,11 @@ export class PositionManager {
   
   /**
    * Monitor open positions for TP/SL
+   * @param {Array} candles - Current candles
+   * @param {Object} currentSignal - Current trading signal
+   * @param {Function} executeSellCallback - Callback to execute sell (async function)
    */
-  async monitorPositions(candles, currentSignal) {
+  async monitorPositions(candles, currentSignal, executeSellCallback = null) {
     if (this.positions.length === 0) return;
     
     const currentPrice = candles[candles.length - 1].close;
@@ -132,33 +135,43 @@ export class PositionManager {
       // Check take profit
       if (pnl >= config.TAKE_PROFIT_PCT) {
         console.log(`\n🎯 TAKE PROFIT HIT! +${pnl.toFixed(2)}%`);
-        // TODO: Execute sell via Jupiter
-        // For now, just log
-        if (!config.DRY_RUN) {
-          // await this.executeSell(position, currentPrice, 'TP');
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'TP');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position at +${pnl.toFixed(2)}%\n`);
+          // In dry-run, just log and remove position
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'TP');
         }
       }
       
       // Check stop loss
       else if (pnl <= -config.STOP_LOSS_PCT) {
         console.log(`\n🛑 STOP LOSS HIT! ${pnl.toFixed(2)}%`);
-        // TODO: Execute sell via Jupiter
-        if (!config.DRY_RUN) {
-          // await this.executeSell(position, currentPrice, 'SL');
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'SL');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position at ${pnl.toFixed(2)}%\n`);
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'SL');
         }
       }
       
       // Check bearish signal (manual exit)
       else if (currentSignal && currentSignal.action === 'sell' && currentSignal.score >= config.MIN_SIGNAL_SCORE) {
         console.log(`\n📉 BEARISH SIGNAL - Exiting position (${pnl.toFixed(2)}%)`);
-        if (!config.DRY_RUN) {
-          // await this.executeSell(position, currentPrice, 'SIGNAL');
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'SIGNAL');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position at ${pnl.toFixed(2)}%\n`);
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'SIGNAL');
         }
       }
       
-      // Log status every minute
-      if (holdTime % 60000 < 2000) {
-        console.log(`Position: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${Math.floor(holdTime / 1000)}s`);
+      // Log status periodically
+      else {
+        console.log(`💎 Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${Math.floor(holdTime / 1000)}s`);
       }
     }
   }

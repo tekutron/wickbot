@@ -117,7 +117,8 @@ class WickBot {
       // 8. Monitor existing positions
       await this.positionManager.monitorPositions(
         multiTimeframeCandles[config.PRIMARY_TIMEFRAME],
-        signal
+        signal,
+        (position, price, reason) => this.executeSell(position, price, reason)
       );
       
     } catch (err) {
@@ -176,21 +177,48 @@ class WickBot {
     console.log(`   Reason: ${signal.reason}`);
     console.log(`   Patterns: ${signal.patterns.join(', ')}`);
     
+    const positionSize = this.positionManager.getPositionSize();
+    console.log(`   Position size: ${positionSize.toFixed(4)} SOL`);
+    
     if (config.DRY_RUN) {
       console.log(`   🧪 DRY-RUN: Skipping actual trade\n`);
       return;
     }
     
     try {
-      const result = await this.jupiterSwap.swapSolToUsdc(signal);
+      const result = await this.jupiterSwap.swapSolToUsdc(signal, positionSize);
       
       if (result.success) {
         this.positionManager.openPosition(result);
-        console.log(`   ✅ Position opened: ${result.amountOut} USDC`);
-        console.log(`   Entry price: $${result.price.toFixed(4)}`);
+        console.log(`   ✅ Position opened: ${result.amountOut.toFixed(2)} USDC`);
+        console.log(`   Entry price: $${result.price.toFixed(2)}/SOL`);
         console.log(`   Signature: ${result.signature}\n`);
       } else {
         console.log(`   ❌ Trade failed: ${result.error}\n`);
+      }
+    } catch (err) {
+      console.error(`   ❌ Execute error: ${err.message}\n`);
+    }
+  }
+  
+  async executeSell(position, currentPrice, reason) {
+    console.log(`\n💸 SELL SIGNAL - ${reason}`);
+    console.log(`   Position: ${position.id}`);
+    console.log(`   Entry: $${position.entryPrice.toFixed(2)}/SOL`);
+    console.log(`   Current: $${currentPrice.toFixed(2)}/SOL`);
+    
+    if (config.DRY_RUN) {
+      console.log(`   🧪 DRY-RUN: Skipping actual trade\n`);
+      return;
+    }
+    
+    try {
+      const result = await this.jupiterSwap.swapUsdcToSol(position);
+      
+      if (result.success) {
+        this.positionManager.closePosition(position, result.price, result.signature, reason);
+      } else {
+        console.log(`   ❌ Sell failed: ${result.error}\n`);
       }
     } catch (err) {
       console.error(`   ❌ Execute error: ${err.message}\n`);

@@ -51,11 +51,11 @@
 ## Phase 2: Execution (Day 2)
 
 ### Jupiter Integration
-- [ ] Swap SOL → USDC (buy signal)
-- [ ] Swap USDC → SOL (sell signal)
-- [ ] Route optimization
-- [ ] Slippage handling
-- [ ] Error recovery
+- [x] Swap SOL → USDC (buy signal)
+- [x] Swap USDC → SOL (sell signal)
+- [x] Route optimization (Jupiter API v6)
+- [x] Slippage handling (0.5% default)
+- [x] Error recovery (max retries: 3)
 
 ### Position Management
 - [x] Track open positions
