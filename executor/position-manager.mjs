@@ -20,12 +20,18 @@ export class PositionManager {
   }
   
   async initialize() {
-    // Load wallet
-    if (!fs.existsSync(config.WALLET_PATH)) {
-      throw new Error(`Wallet not found: ${config.WALLET_PATH}`);
+    // Load wallet based on ACTIVE_WALLET setting
+    const walletPath = config.ACTIVE_WALLET === 'USDC' 
+      ? config.USDC_WALLET_PATH 
+      : config.WALLET_PATH;
+    
+    if (!fs.existsSync(walletPath)) {
+      throw new Error(`Wallet not found: ${walletPath}`);
     }
     
-    const walletData = JSON.parse(fs.readFileSync(config.WALLET_PATH, 'utf8'));
+    console.log(`💳 Using ${config.ACTIVE_WALLET} wallet: ${walletPath}`);
+    
+    const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
     this.wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
     
     // Connect to RPC
@@ -71,7 +77,14 @@ export class PositionManager {
   
   async updateCapitalFromChain() {
     const balance = await this.getBalance();
-    this.currentCapital = balance.sol;
+    
+    // For USDC-first strategy, track capital in USDC
+    // For SOL-first strategy, track capital in SOL
+    if (config.ACTIVE_WALLET === 'USDC') {
+      this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent for comparison
+    } else {
+      this.currentCapital = balance.sol;
+    }
   }
   
   /**

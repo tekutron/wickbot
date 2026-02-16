@@ -54,8 +54,8 @@ class WickBot {
     console.log(`⚙️  Strategy: Buy lows, Sell highs (Pattern-based)`);
     console.log(`📈 Timeframes: ${config.CANDLE_TIMEFRAMES.join(', ')}`);
     console.log(`🎯 Position Size: ${config.POSITION_SIZE_PCT}% (~${(balance.sol * config.POSITION_SIZE_PCT / 100).toFixed(4)} SOL)`);
-    console.log(`✅ Take Profit: +${config.TAKE_PROFIT_PCT}%`);
-    console.log(`🛑 Stop Loss: -${config.STOP_LOSS_PCT}%`);
+    console.log(`✅ Max Profit: +${config.MAX_PROFIT_PCT}%`);
+    console.log(`🛑 Safety Stop: -${config.SAFETY_STOP_LOSS_PCT}%`);
     
     if (config.DRY_RUN) {
       console.log(`\n🧪 DRY-RUN MODE: No real trades will be executed\n`);
