@@ -11,6 +11,16 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Timeout wrapper for RPC calls
+async function withTimeout(promise, ms = 8000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('RPC timeout')), ms)
+    )
+  ]);
+}
+
 async function getBothBalances() {
   try {
     // Load config
@@ -28,14 +38,14 @@ async function getBothBalances() {
       const solWalletData = JSON.parse(fs.readFileSync(solWalletPath, 'utf8'));
       const solWallet = Keypair.fromSecretKey(Uint8Array.from(solWalletData));
       
-      const solBalance = await connection.getBalance(solWallet.publicKey);
+      const solBalance = await withTimeout(connection.getBalance(solWallet.publicKey));
       const solAmount = solBalance / 1e9;
       
       let solUsdc = 0;
       try {
         const usdcMint = new PublicKey(config.TOKEN_ADDRESS_USDC);
         const usdcTokenAccount = await getAssociatedTokenAddress(usdcMint, solWallet.publicKey);
-        const accountInfo = await getAccount(connection, usdcTokenAccount);
+        const accountInfo = await withTimeout(getAccount(connection, usdcTokenAccount));
         solUsdc = Number(accountInfo.amount) / 1e6;
       } catch (err) {
         solUsdc = 0;
@@ -57,14 +67,14 @@ async function getBothBalances() {
       const usdcWalletData = JSON.parse(fs.readFileSync(usdcWalletPath, 'utf8'));
       const usdcWallet = Keypair.fromSecretKey(Uint8Array.from(usdcWalletData));
       
-      const solBalance = await connection.getBalance(usdcWallet.publicKey);
+      const solBalance = await withTimeout(connection.getBalance(usdcWallet.publicKey));
       const solAmount = solBalance / 1e9;
       
       let usdcAmount = 0;
       try {
         const usdcMint = new PublicKey(config.TOKEN_ADDRESS_USDC);
         const usdcTokenAccount = await getAssociatedTokenAddress(usdcMint, usdcWallet.publicKey);
-        const accountInfo = await getAccount(connection, usdcTokenAccount);
+        const accountInfo = await withTimeout(getAccount(connection, usdcTokenAccount));
         usdcAmount = Number(accountInfo.amount) / 1e6;
       } catch (err) {
         usdcAmount = 0;
