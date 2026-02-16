@@ -8,6 +8,7 @@
     "start": "node bot.mjs",
     "test": "node test/test-bot.mjs",
     "test:patterns": "node test/test-patterns.mjs",
+    "create-wallet": "node scripts/create-wallet.mjs",
     "dashboard": "node dashboard/server.mjs"
   },
   "keywords": ["solana", "trading", "candles", "patterns", "bot"],
