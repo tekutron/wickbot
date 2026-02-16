@@ -30,27 +30,50 @@ export class SignalGenerator {
     const patternScore = this.scorePatterns(patterns);
     
     // Score indicators
-    const indicatorScore = this.scoreIndicators(indicators);
+    const indicatorScore = this.scoreIndicators(indicators, candles);
     
-    // Combine scores (70% patterns, 30% indicators)
-    const totalScore = (patternScore.score * 0.7) + (indicatorScore.score * 0.3);
+    // Check trend alignment (MA crossover)
+    const trendCheck = this.checkTrend(indicators[primaryTF], candles[primaryTF]);
     
-    // Determine action (buy, sell, hold)
+    // Combine scores (60% patterns, 40% indicators - OPTIMIZED)
+    const patternWeight = 1 - config.INDICATOR_WEIGHT;
+    const totalScore = (patternScore.score * patternWeight) + (indicatorScore.score * config.INDICATOR_WEIGHT);
+    
+    // Determine action (buy, sell, hold) - MORE SELECTIVE
     let action = 'hold';
     let reason = '';
     
+    // BUY: Bullish patterns + bullish indicators + uptrend (if required)
     if (patternScore.bullish && indicatorScore.bullish) {
-      action = 'buy';
-      reason = this.buildReason(patternScore.patterns, indicatorScore.signals);
-    } else if (patternScore.bearish && indicatorScore.bearish) {
-      action = 'sell';
-      reason = this.buildReason(patternScore.patterns, indicatorScore.signals);
-    } else if (patternScore.bullish && !indicatorScore.bearish) {
-      action = 'buy';
-      reason = `Pattern-driven: ${patternScore.patterns.join(', ')}`;
+      if (!config.REQUIRE_TREND_ALIGNMENT || trendCheck.uptrend) {
+        action = 'buy';
+        reason = this.buildReason(patternScore.patterns, indicatorScore.signals);
+        if (trendCheck.uptrend) reason += ' | Confirmed uptrend ✅';
+      } else {
+        reason = 'Bullish signals rejected: downtrend (MA filter)';
+      }
+    }
+    // SELL: Bearish patterns + bearish indicators + downtrend (if required)
+    else if (patternScore.bearish && indicatorScore.bearish) {
+      if (!config.REQUIRE_TREND_ALIGNMENT || trendCheck.downtrend) {
+        action = 'sell';
+        reason = this.buildReason(patternScore.patterns, indicatorScore.signals);
+        if (trendCheck.downtrend) reason += ' | Confirmed downtrend ✅';
+      } else {
+        reason = 'Bearish signals rejected: uptrend (MA filter)';
+      }
+    }
+    // Pattern-driven (only if trend allows)
+    else if (patternScore.bullish && !indicatorScore.bearish) {
+      if (!config.REQUIRE_TREND_ALIGNMENT || trendCheck.uptrend) {
+        action = 'buy';
+        reason = `Strong patterns: ${patternScore.patterns.join(', ')}`;
+      }
     } else if (patternScore.bearish && !indicatorScore.bullish) {
-      action = 'sell';
-      reason = `Pattern-driven: ${patternScore.patterns.join(', ')}`;
+      if (!config.REQUIRE_TREND_ALIGNMENT || trendCheck.downtrend) {
+        action = 'sell';
+        reason = `Strong patterns: ${patternScore.patterns.join(', ')}`;
+      }
     } else {
       reason = 'Mixed signals or insufficient strength';
     }
@@ -127,7 +150,7 @@ export class SignalGenerator {
   /**
    * Score indicators across timeframes
    */
-  scoreIndicators(indicators) {
+  scoreIndicators(indicators, candles = null) {
     const primaryTF = config.PRIMARY_TIMEFRAME;
     const primary = indicators[primaryTF];
     
@@ -193,6 +216,90 @@ export class SignalGenerator {
       bullish: score > 50,
       bearish: score < 50,
       signals: signals
+    };
+  }
+  
+  /**
+   * Check trend direction using Moving Average crossover
+   * @param {Object} indicators - Primary timeframe indicators
+   * @param {Array} candles - Primary timeframe candles
+   * @returns {Object} {uptrend, downtrend, neutral, reason}
+   */
+  checkTrend(indicators, candles) {
+    if (!indicators || !indicators.ma || !candles || candles.length === 0) {
+      return { uptrend: false, downtrend: false, neutral: true, reason: 'No MA data' };
+    }
+    
+    const currentPrice = candles[candles.length - 1].close;
+    const ma20 = indicators.ma.sma20;
+    const ma50 = indicators.ma.sma50;
+    
+    // Strong uptrend: Price > MA20 > MA50
+    if (currentPrice > ma20 && ma20 > ma50) {
+      return { 
+        uptrend: true, 
+        downtrend: false, 
+        neutral: false, 
+        reason: `Uptrend (Price: ${currentPrice.toFixed(2)} > MA20: ${ma20.toFixed(2)} > MA50: ${ma50.toFixed(2)})` 
+      };
+    }
+    
+    // Strong downtrend: Price < MA20 < MA50
+    if (currentPrice < ma20 && ma20 < ma50) {
+      return { 
+        uptrend: false, 
+        downtrend: true, 
+        neutral: false, 
+        reason: `Downtrend (Price: ${currentPrice.toFixed(2)} < MA20: ${ma20.toFixed(2)} < MA50: ${ma50.toFixed(2)})` 
+      };
+    }
+    
+    // Golden cross: MA20 just crossed above MA50 (bullish)
+    if (ma20 > ma50 && indicators.ma.crossover) {
+      return { 
+        uptrend: true, 
+        downtrend: false, 
+        neutral: false, 
+        reason: 'Golden cross (MA20 > MA50)' 
+      };
+    }
+    
+    // Death cross: MA20 just crossed below MA50 (bearish)
+    if (ma20 < ma50 && !indicators.ma.crossover) {
+      return { 
+        uptrend: false, 
+        downtrend: true, 
+        neutral: false, 
+        reason: 'Death cross (MA20 < MA50)' 
+      };
+    }
+    
+    // Weak uptrend: Price > MA20 but MA20 < MA50
+    if (currentPrice > ma20 && ma20 < ma50) {
+      return { 
+        uptrend: true, 
+        downtrend: false, 
+        neutral: false, 
+        reason: 'Weak uptrend (counter-trend bounce)' 
+      };
+    }
+    
+    // Weak downtrend: Price < MA20 but MA20 > MA50
+    if (currentPrice < ma20 && ma20 > ma50) {
+      return { 
+        uptrend: false, 
+        downtrend: true, 
+        neutral: false, 
+        reason: 'Weak downtrend (pullback in uptrend)' 
+      };
+    }
+    
+    // Neutral/consolidation
+    return { 
+      uptrend: false, 
+      downtrend: false, 
+      neutral: true, 
+      reason: 'Neutral (consolidation)' 
     };
   }
   

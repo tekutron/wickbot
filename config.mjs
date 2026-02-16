@@ -28,10 +28,11 @@ export const config = {
   CANDLE_TIMEFRAMES: ['1m', '5m', '15m', '30m', '1h'],
   PRIMARY_TIMEFRAME: '5m',      // Main timeframe for decisions
   
-  // Signal Scoring
-  MIN_SIGNAL_SCORE: 70,         // 0-100 scale (70+ = execute trade)
-  MULTI_TIMEFRAME_BOOST: 20,    // Bonus points for patterns on multiple timeframes
-  INDICATOR_WEIGHT: 0.3,        // 30% weight for indicators, 70% for patterns
+  // Signal Scoring (OPTIMIZED 2026-02-16)
+  MIN_SIGNAL_SCORE: 75,         // 0-100 scale (75+ = execute trade, more selective)
+  MULTI_TIMEFRAME_BOOST: 25,    // Bonus points for patterns on multiple timeframes (increased)
+  INDICATOR_WEIGHT: 0.4,        // 40% weight for indicators, 60% for patterns (trend matters!)
+  REQUIRE_TREND_ALIGNMENT: true, // Require MA crossover confirmation
   
   // Data Source
   BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
@@ -54,39 +55,40 @@ export const config = {
   LOG_LEVEL: 'info',            // debug, info, warn, error
   LOG_FILE: './logs/wickbot.log',
   
-  // Pattern Weights (0-100, higher = stronger signal)
+  // Pattern Weights (OPTIMIZED 2026-02-16)
+  // 0-100 scale, higher = stronger signal, based on TA reliability
   PATTERN_WEIGHTS: {
-    // Bullish patterns (buy signals)
-    'hammer': 80,
-    'inverted_hammer': 75,
-    'bullish_engulfing': 90,
-    'bullish_harami': 70,
-    'morning_star': 85,
-    'three_white_soldiers': 95,
-    'piercing_pattern': 80,
-    'dragonfly_doji': 65,
+    // Bullish patterns (buy signals) - Ranked by reliability
+    'three_white_soldiers': 95,    // Strongest multi-candle pattern
+    'bullish_engulfing': 90,        // Strong reversal at support
+    'morning_star': 88,             // Reliable bottom reversal
+    'piercing_pattern': 82,         // Strong bullish reversal
+    'hammer': 78,                   // Classic bottom pattern
+    'inverted_hammer': 72,          // Moderate bottom signal
+    'bullish_harami': 68,           // Weak reversal (needs confirmation)
+    'dragonfly_doji': 65,           // Indecision with bullish bias
     
-    // Bearish patterns (sell signals)
-    'shooting_star': 80,
-    'hanging_man': 75,
-    'bearish_engulfing': 90,
-    'bearish_harami': 70,
-    'evening_star': 85,
-    'three_black_crows': 95,
-    'dark_cloud_cover': 80,
-    'gravestone_doji': 65,
+    // Bearish patterns (sell signals) - Ranked by reliability
+    'three_black_crows': 95,        // Strongest multi-candle pattern
+    'bearish_engulfing': 90,        // Strong reversal at resistance
+    'evening_star': 88,             // Reliable top reversal
+    'dark_cloud_cover': 82,         // Strong bearish reversal
+    'shooting_star': 78,            // Classic top pattern
+    'hanging_man': 72,              // Moderate top signal
+    'bearish_harami': 68,           // Weak reversal (needs confirmation)
+    'gravestone_doji': 65,          // Indecision with bearish bias
     
-    // Neutral (confirmation)
-    'doji': 50,
-    'spinning_top': 45,
-    'long_legged_doji': 55,
+    // Neutral (confirmation/filter only - reduced weight)
+    'doji': 40,                     // Indecision (reduced from 50)
+    'spinning_top': 35,             // Weak indecision (reduced from 45)
+    'long_legged_doji': 45,         // Strong indecision (reduced from 55)
   },
   
-  // Indicator Thresholds
+  // Indicator Thresholds (OPTIMIZED 2026-02-16)
   INDICATORS: {
     RSI_PERIOD: 14,
-    RSI_OVERSOLD: 40,             // Buy zone
-    RSI_OVERBOUGHT: 60,           // Sell zone
+    RSI_OVERSOLD: 30,             // Buy zone (classic TA level, more extreme)
+    RSI_OVERBOUGHT: 70,           // Sell zone (classic TA level, more extreme)
     
     MACD_FAST: 12,
     MACD_SLOW: 26,
