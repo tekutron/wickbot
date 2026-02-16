@@ -7,6 +7,7 @@
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { spawn } from 'child_process';
+import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -69,6 +70,18 @@ const server = createServer((req, res) => {
     // TODO: Implement manual position close
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: 'Position closed' }));
+    return;
+  }
+  
+  if (url.startsWith('/api/candles') && method === 'GET') {
+    // Parse query params
+    const urlObj = new URL(url, `http://${req.headers.host}`);
+    const timeframe = urlObj.searchParams.get('timeframe') || '5m';
+    
+    // Return mock candle data for now (will be replaced with real data from bot)
+    const mockCandles = generateMockCandles(timeframe);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(mockCandles));
     return;
   }
   
@@ -259,6 +272,31 @@ async function updateBalances() {
       resolve();
     });
   });
+}
+
+// Generate mock candle data (will be replaced with real data from Birdeye)
+function generateMockCandles(timeframe) {
+  const now = Date.now();
+  const intervals = { '1m': 60000, '5m': 300000, '15m': 900000, '1h': 3600000 };
+  const interval = intervals[timeframe] || 300000;
+  const count = 100;
+  
+  const candles = [];
+  let price = 86; // Current SOL price
+  
+  for (let i = count; i >= 0; i--) {
+    const time = now - (i * interval);
+    const change = (Math.random() - 0.5) * 2; // Random +/- $1
+    const open = price;
+    const close = price + change;
+    const high = Math.max(open, close) + Math.random() * 0.5;
+    const low = Math.min(open, close) - Math.random() * 0.5;
+    
+    candles.push({ time, open, high, low, close });
+    price = close;
+  }
+  
+  return candles;
 }
 
 // Start server

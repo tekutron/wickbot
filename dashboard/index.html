@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🕯️ wickbot Dashboard</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     * {
       margin: 0;
@@ -101,6 +102,19 @@
     .btn-stop {
       background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      color: white;
+      font-size: 0.9em;
+      padding: 8px 16px;
+    }
+    
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #e0e0e0;
+      border: 1px solid rgba(255,255,255,0.2);
     }
     
     .grid {
@@ -346,18 +360,40 @@
               <button class="btn-secondary" onclick="transferFunds()">📤 Transfer</button>
             </div>
           </div>
-        </div>        
+        </div>
+        
+        <!-- PRICE CHART -->
         <div class="card" style="margin-top: 20px;">
-          <h2>📊 Signal</h2>
-          <div class="signal-display">
-            <div class="signal-action hold" id="signalAction">HOLD</div>
-            <div class="signal-score" id="signalScore">Score: 0/100</div>
-            <div style="margin-top: 15px; color: #888;" id="signalReason">Waiting for data...</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>📈 SOL/USDC Chart</h2>
+            <select id="chartTimeframe" onchange="switchChartTimeframe()" style="padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0;">
+              <option value="1m">1min</option>
+              <option value="5m" selected>5min</option>
+              <option value="15m">15min</option>
+              <option value="1h">1hour</option>
+            </select>
+          </div>
+          <div id="chart" style="height: 400px; position: relative;"></div>
+          <div id="patternMarkers" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; min-height: 40px;">
+            <div style="font-size: 0.85em; color: #888;">Detected Patterns: <span id="patternList" style="color: #e0e0e0;">None</span></div>
           </div>
         </div>
         
         <div class="card" style="margin-top: 20px;">
-          <h2>📈 Position</h2>
+          <h2>🎯 Signal</h2>
+          <div class="signal-display">
+            <div class="signal-action hold" id="signalAction">HOLD</div>
+            <div class="signal-score" id="signalScore">Score: 0/100</div>
+            <div style="margin-top: 15px; font-size: 0.9em; color: #888;" id="signalReason">Waiting for data...</div>
+            <div style="margin-top: 10px; font-size: 0.85em; color: #666;" id="signalBreakdown"></div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>💎 Position</h2>
+            <button class="btn-danger" id="closePositionBtn" onclick="closePosition()" style="display: none;">✕ Close</button>
+          </div>
           <div id="positionContainer">
             <p style="text-align: center; color: #888; padding: 40px;">No open positions</p>
           </div>
@@ -405,21 +441,26 @@
         </div>
         
         <div class="card" style="margin-top: 20px;">
-          <h2>📜 Recent Trades</h2>
-          <table class="trades-table" id="tradesTable">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>P&L</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody id="tradesBody">
-              <tr>
-                <td colspan="3" style="text-align: center; color: #888;">No trades yet</td>
-              </tr>
-            </tbody>
-          </table>
+          <h2>📜 Trade History</h2>
+          <div style="max-height: 400px; overflow-y: auto;">
+            <table class="trades-table" id="tradesTable">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>P&L</th>
+                  <th>Hold</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="tradesBody">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: #888; padding: 40px;">No trades yet</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -683,6 +724,221 @@
         updateUI();
       });
     }, 5000);
+    
+    // ==========================
+    // CHART FUNCTIONALITY
+    // ==========================
+    
+    let chart = null;
+    let candleSeries = null;
+    let currentTimeframe = '5m';
+    
+    function initializeChart() {
+      const chartContainer = document.getElementById('chart');
+      
+      chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: 400,
+        layout: {
+          background: { color: 'transparent' },
+          textColor: '#e0e0e0',
+        },
+        grid: {
+          vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+          horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+        },
+        timeScale: {
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
+      
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#4ade80',
+        downColor: '#ef4444',
+        borderUpColor: '#4ade80',
+        borderDownColor: '#ef4444',
+        wickUpColor: '#4ade80',
+        wickDownColor: '#ef4444',
+      });
+      
+      // Handle window resize
+      window.addEventListener('resize', () => {
+        chart.applyOptions({ width: chartContainer.clientWidth });
+      });
+      
+      // Load initial data
+      loadChartData();
+    }
+    
+    async function loadChartData() {
+      try {
+        // Fetch candle data from server (you'll need to add this endpoint)
+        const response = await fetch(`/api/candles?timeframe=${currentTimeframe}`);
+        if (!response.ok) return;
+        
+        const candles = await response.json();
+        if (candles && candles.length > 0) {
+          const chartData = candles.map(c => ({
+            time: Math.floor(c.time / 1000),
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close
+          }));
+          candleSeries.setData(chartData);
+        }
+      } catch (err) {
+        console.error('Failed to load chart data:', err);
+      }
+    }
+    
+    function switchChartTimeframe() {
+      const selector = document.getElementById('chartTimeframe');
+      currentTimeframe = selector.value;
+      loadChartData();
+    }
+    
+    function updatePatternMarkers(patterns) {
+      const patternList = document.getElementById('patternList');
+      
+      if (!patterns || patterns.length === 0) {
+        patternList.textContent = 'None';
+        patternList.style.color = '#888';
+        return;
+      }
+      
+      // Group patterns by type
+      const bullish = patterns.filter(p => p.type === 'bullish');
+      const bearish = patterns.filter(p => p.type === 'bearish');
+      
+      const parts = [];
+      if (bullish.length > 0) {
+        parts.push(`<span style="color: #4ade80;">🔼 ${bullish.map(p => p.name).join(', ')}</span>`);
+      }
+      if (bearish.length > 0) {
+        parts.push(`<span style="color: #ef4444;">🔽 ${bearish.map(p => p.name).join(', ')}</span>`);
+      }
+      
+      patternList.innerHTML = parts.join(' | ');
+    }
+    
+    // ==========================
+    // ENHANCED UPDATE FUNCTIONS
+    // ==========================
+    
+    function updateSignal() {
+      const signal = botState.signal;
+      if (!signal) return;
+      
+      const actionEl = document.getElementById('signalAction');
+      const scoreEl = document.getElementById('signalScore');
+      const reasonEl = document.getElementById('signalReason');
+      const breakdownEl = document.getElementById('signalBreakdown');
+      
+      actionEl.textContent = signal.action.toUpperCase();
+      actionEl.className = `signal-action ${signal.action}`;
+      scoreEl.textContent = `Score: ${signal.score}/100`;
+      reasonEl.textContent = signal.reason || 'No reason provided';
+      
+      // Show breakdown if available
+      if (signal.breakdown) {
+        const b = signal.breakdown;
+        breakdownEl.textContent = `Patterns: ${b.patternScore}/100 | Indicators: ${b.indicatorScore}/100 | Bonus: +${b.multiTimeframeBonus}`;
+      }
+      
+      // Update pattern markers
+      if (signal.patterns) {
+        // For now, create fake pattern objects (you'll need real data from server)
+        const patternObjs = signal.patterns.map(name => ({
+          name,
+          type: signal.action === 'buy' ? 'bullish' : signal.action === 'sell' ? 'bearish' : 'neutral'
+        }));
+        updatePatternMarkers(patternObjs);
+      }
+    }
+    
+    function updatePosition() {
+      const container = document.getElementById('positionContainer');
+      const closeBtn = document.getElementById('closePositionBtn');
+      const position = botState.position;
+      
+      if (!position) {
+        container.innerHTML = '<p style="text-align: center; color: #888; padding: 40px;">No open positions</p>';
+        closeBtn.style.display = 'none';
+        return;
+      }
+      
+      closeBtn.style.display = 'block';
+      
+      const pnl = position.pnl || 0;
+      const pnlColor = pnl >= 0 ? '#4ade80' : '#ef4444';
+      const holdTime = Math.floor((Date.now() - position.entryTime) / 1000);
+      
+      container.innerHTML = `
+        <div style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <div>
+              <div style="color: #888; font-size: 0.85em;">Entry Price</div>
+              <div style="font-size: 1.2em; font-weight: 600;">$${position.entryPrice?.toFixed(2) || '0.00'}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="color: #888; font-size: 0.85em;">P&L</div>
+              <div style="font-size: 1.5em; font-weight: 700; color: ${pnlColor};">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div>
+              <div style="color: #888; font-size: 0.85em;">Amount</div>
+              <div>${position.amountSol?.toFixed(4) || '0'} SOL</div>
+            </div>
+            <div>
+              <div style="color: #888; font-size: 0.85em;">Hold Time</div>
+              <div>${Math.floor(holdTime / 60)}m ${holdTime % 60}s</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function updateTradesTable() {
+      const tbody = document.getElementById('tradesBody');
+      const trades = botState.trades || [];
+      
+      if (trades.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888; padding: 40px;">No trades yet</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = trades.slice(-10).reverse().map(trade => {
+        const pnl = trade.pnl || 0;
+        const pnlColor = pnl >= 0 ? '#4ade80' : '#ef4444';
+        const date = new Date(trade.exitTime);
+        const holdSeconds = Math.floor((trade.exitTime - trade.entryTime) / 1000);
+        const holdTime = holdSeconds > 60 ? `${Math.floor(holdSeconds / 60)}m` : `${holdSeconds}s`;
+        
+        return `
+          <tr>
+            <td>${date.toLocaleTimeString()}</td>
+            <td style="font-size: 0.85em;">$${trade.entryPrice?.toFixed(2) || '0'}</td>
+            <td style="font-size: 0.85em;">$${trade.exitPrice?.toFixed(2) || '0'}</td>
+            <td style="color: ${pnlColor}; font-weight: 600;">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%</td>
+            <td style="font-size: 0.85em;">${holdTime}</td>
+            <td style="font-size: 0.85em; color: #888;">${trade.reason || 'Unknown'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // Initialize chart on page load
+    setTimeout(initializeChart, 100);
   </script>
 </body>
 </html>
