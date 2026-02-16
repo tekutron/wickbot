@@ -133,6 +133,10 @@ class WickBot {
     console.log(`[${timestamp}]`);
     console.log(`Signal: ${signal.action.toUpperCase()} (Score: ${signal.score}/100)`);
     
+    if (signal.reason) {
+      console.log(`Reason: ${signal.reason}`);
+    }
+    
     if (signal.patterns.length > 0) {
       console.log(`Patterns: ${signal.patterns.join(', ')}`);
     }

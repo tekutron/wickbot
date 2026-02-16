@@ -194,6 +194,19 @@ function parseOutput(output) {
         score: parseInt(match[2]),
         timestamp: Date.now()
       };
+      
+      // Extract reason if present
+      const reasonMatch = output.match(/Reason: (.+)/);
+      if (reasonMatch) {
+        botState.signal.reason = reasonMatch[1].trim();
+      }
+      
+      // Extract patterns if present
+      const patternsMatch = output.match(/Patterns: (.+)/);
+      if (patternsMatch) {
+        botState.signal.patterns = patternsMatch[1].trim().split(', ');
+      }
+      
       broadcast({ type: 'signal', data: botState.signal });
     }
   }
