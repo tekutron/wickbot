@@ -182,7 +182,6 @@ class WickBot {
     console.log(`   Patterns: ${signal.patterns.join(', ')}`);
     
     const positionSize = this.positionManager.getPositionSize();
-    console.log(`   Position size: ${positionSize.toFixed(4)} SOL`);
     
     if (config.DRY_RUN) {
       console.log(`   🧪 DRY-RUN: Skipping actual trade\n`);
@@ -190,11 +189,15 @@ class WickBot {
     }
     
     try {
-      const result = await this.jupiterSwap.swapSolToUsdc(signal, positionSize);
+      // USDC-first mode: BUY = swap USDC → SOL (buy SOL with USDC)
+      const usdcAmount = positionSize * 86; // Rough estimate: SOL price ~$86
+      console.log(`   Position size: ${usdcAmount.toFixed(2)} USDC (~${positionSize.toFixed(4)} SOL)`);
+      
+      const result = await this.jupiterSwap.swapUsdcToSol(signal, usdcAmount);
       
       if (result.success) {
         this.positionManager.openPosition(result);
-        console.log(`   ✅ Position opened: ${result.amountOut.toFixed(2)} USDC`);
+        console.log(`   ✅ Position opened: ${result.amountOut.toFixed(4)} SOL`);
         console.log(`   Entry price: $${result.price.toFixed(2)}/SOL`);
         console.log(`   Signature: ${result.signature}\n`);
       } else {
@@ -217,10 +220,13 @@ class WickBot {
     }
     
     try {
-      const result = await this.jupiterSwap.swapUsdcToSol(position);
+      // USDC-first mode: SELL = swap SOL → USDC (sell SOL back to USDC)
+      const result = await this.jupiterSwap.swapSolToUsdc(position, position.amountSol);
       
       if (result.success) {
         this.positionManager.closePosition(position, result.price, result.signature, reason);
+        console.log(`   ✅ Position closed: ${result.amountOut.toFixed(2)} USDC`);
+        console.log(`   Exit price: $${result.price.toFixed(2)}/SOL\n`);
       } else {
         console.log(`   ❌ Sell failed: ${result.error}\n`);
       }
