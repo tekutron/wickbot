@@ -18,10 +18,10 @@ export const config = {
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
   SIGNAL_EXIT_SCORE: 60,        // LOWERED: Min score 60 for exit (faster exits on reversal)
   
-  // Safety stops (SCALPING MODE - Fast in/out)
+  // Safety stops (SCALPING MODE - Signal-driven exits)
   MAX_PROFIT_PCT: 10,           // REDUCED: Quick exit at +10% (scalping = small moves)
   SAFETY_STOP_LOSS_PCT: 8,      // TIGHTER: Hard stop at -8% (cut losers fast)
-  MAX_HOLD_TIME_MIN: 15,        // NEW: Max 15 minutes per position (no bagholding)
+  MAX_HOLD_TIME_MIN: null,      // DISABLED: Let signals control exits (no arbitrary time limit)
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
