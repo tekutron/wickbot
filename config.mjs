@@ -16,11 +16,11 @@ export const config = {
   
   // Signal-based exits (PRIMARY - pattern/indicator driven)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
-  SIGNAL_EXIT_SCORE: 60,        // LOWERED: Min score 60 for exit (faster exits on reversal)
+  SIGNAL_EXIT_SCORE: 50,        // FIX #1: Min score 50 for exit (was 60, catch reversals earlier)
   
-  // Safety stops (SCALPING MODE - Signal-driven exits)
-  MAX_PROFIT_PCT: 10,           // REDUCED: Quick exit at +10% (scalping = small moves)
-  SAFETY_STOP_LOSS_PCT: 8,      // TIGHTER: Hard stop at -8% (cut losers fast)
+  // Safety stops (SCALPING MODE - Realistic targets)
+  MAX_PROFIT_PCT: 5,            // FIX #2: Quick exit at +5% (was 10%, more realistic for scalping)
+  SAFETY_STOP_LOSS_PCT: 5,      // TIGHTER: Hard stop at -5% (was 8%, cut losers faster)
   MAX_HOLD_TIME_MIN: null,      // DISABLED: Let signals control exits (no arbitrary time limit)
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
@@ -29,11 +29,18 @@ export const config = {
   CANDLE_TIMEFRAMES: ['1m', '5m', '15m', '30m', '1h'],
   PRIMARY_TIMEFRAME: '1m',      // SCALPING MODE: 1m for fast entries (was 5m)
   
-  // Signal Scoring (SCALPING MODE - 2026-02-16 16:15)
+  // Signal Scoring (SCALPING MODE - Session 1 fixes)
   MIN_SIGNAL_SCORE: 65,         // LOWERED: 65+ = decent setup (was 75, more opportunities)
   MULTI_TIMEFRAME_BOOST: 20,    // Bonus points for patterns on multiple timeframes
   INDICATOR_WEIGHT: 0.35,       // REDUCED: 35% indicators, 65% patterns (patterns lead)
   REQUIRE_TREND_ALIGNMENT: false, // DISABLED: Allow counter-trend scalps (buy dips anywhere)
+  
+  // FIX #3: Pattern diversity check (avoid stale data)
+  REQUIRE_PATTERN_DIVERSITY: true,  // Reject if same patterns repeat 5+ times
+  PATTERN_DIVERSITY_WINDOW: 5,      // Check last 5 signals
+  
+  // FIX #4: Minimum movement filter (avoid flat markets)
+  MIN_CANDLE_BODY_PCT: 0.5,     // Skip trades if 1m candle body < 0.5% (consolidation filter)
   
   // RSI Thresholds (SCALPING MODE)
   RSI_OVERSOLD: 40,             // Early oversold (was 30, catch dips sooner)
@@ -92,8 +99,8 @@ export const config = {
   // Indicator Thresholds (OPTIMIZED 2026-02-16)
   INDICATORS: {
     RSI_PERIOD: 14,
-    RSI_OVERSOLD: 40,             // SCALPING: Early oversold (was 30, catch dips sooner)
-    RSI_OVERBOUGHT: 65,           // SCALPING: Early overbought (was 70, exit sooner)
+    RSI_OVERSOLD: 40,             // SCALPING: Early oversold (catch dips sooner)
+    RSI_OVERBOUGHT: 60,           // FIX #1b: Earlier overbought exit (was 65, exit in consolidation)
     
     MACD_FAST: 12,
     MACD_SLOW: 26,

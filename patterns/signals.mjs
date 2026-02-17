@@ -7,6 +7,10 @@
 import config from '../config.mjs';
 
 export class SignalGenerator {
+  constructor() {
+    this.signalHistory = []; // Track last N signals for pattern diversity check
+  }
+  
   /**
    * Generate trading signal from patterns and indicators
    * @param {Object} patterns - Map of timeframe → detected patterns
@@ -24,6 +28,28 @@ export class SignalGenerator {
     
     if (primaryCandles.length === 0) {
       return this.noSignal('No candle data');
+    }
+    
+    // FIX #4: Minimum candle body filter (avoid flat markets)
+    if (config.MIN_CANDLE_BODY_PCT) {
+      const lastCandle = primaryCandles[primaryCandles.length - 1];
+      const candleBody = Math.abs(lastCandle.close - lastCandle.open);
+      const bodyPct = (candleBody / lastCandle.open) * 100;
+      
+      if (bodyPct < config.MIN_CANDLE_BODY_PCT) {
+        return this.noSignal(`Candle body too small (${bodyPct.toFixed(2)}% < ${config.MIN_CANDLE_BODY_PCT}%)`);
+      }
+    }
+    
+    // FIX #3: Pattern diversity check (avoid stale data)
+    if (config.REQUIRE_PATTERN_DIVERSITY && this.signalHistory.length >= config.PATTERN_DIVERSITY_WINDOW) {
+      const recentPatterns = this.signalHistory.slice(-config.PATTERN_DIVERSITY_WINDOW);
+      const patternSets = recentPatterns.map(s => s.patterns.sort().join(','));
+      const allSame = patternSets.every(p => p === patternSets[0]);
+      
+      if (allSame && patternSets[0] !== '') {
+        return this.noSignal(`Pattern repetition detected (stale data? ${patternSets[0]})`);
+      }
     }
     
     // Score patterns
@@ -78,7 +104,7 @@ export class SignalGenerator {
       reason = 'Mixed signals or insufficient strength';
     }
     
-    return {
+    const signal = {
       action: action,
       score: Math.min(100, Math.round(totalScore)), // Clamp to 100 max
       reason: reason,
@@ -90,6 +116,14 @@ export class SignalGenerator {
         multiTimeframeBonus: patternScore.multiTimeframeBonus
       }
     };
+    
+    // Store signal in history for pattern diversity check
+    this.signalHistory.push(signal);
+    if (this.signalHistory.length > config.PATTERN_DIVERSITY_WINDOW) {
+      this.signalHistory.shift(); // Keep only last N signals
+    }
+    
+    return signal;
   }
   
   /**
