@@ -10,34 +10,39 @@ export const config = {
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   STARTING_CAPITAL_SOL: 0.18,   // 15.31 USDC ≈ 0.18 SOL @ $86/SOL
   
-  // Position Sizing & Risk (OPTIMIZED 2026-02-16)
-  POSITION_SIZE_PCT: 30,        // 30% per trade (~$4.60, better fee efficiency)
+  // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
+  POSITION_SIZE_PCT: 40,        // 40% per trade (~$6, better fee efficiency for scalping)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Signal-based exits (PRIMARY - pattern/indicator driven)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
-  SIGNAL_EXIT_SCORE: 75,        // Min score for exit (matches entry threshold)
+  SIGNAL_EXIT_SCORE: 60,        // LOWERED: Min score 60 for exit (faster exits on reversal)
   
-  // Safety stops (BACKUP - prevent disasters, OPTIMIZED)
-  MAX_PROFIT_PCT: 20,           // Auto-exit at +20% (take profit, prevent reversal)
-  SAFETY_STOP_LOSS_PCT: 15,     // Hard stop at -15% (tighter risk control)
+  // Safety stops (SCALPING MODE - Fast in/out)
+  MAX_PROFIT_PCT: 10,           // REDUCED: Quick exit at +10% (scalping = small moves)
+  SAFETY_STOP_LOSS_PCT: 8,      // TIGHTER: Hard stop at -8% (cut losers fast)
+  MAX_HOLD_TIME_MIN: 15,        // NEW: Max 15 minutes per position (no bagholding)
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
   // Timeframes
   CANDLE_TIMEFRAMES: ['1m', '5m', '15m', '30m', '1h'],
-  PRIMARY_TIMEFRAME: '5m',      // Main timeframe for decisions
+  PRIMARY_TIMEFRAME: '1m',      // SCALPING MODE: 1m for fast entries (was 5m)
   
-  // Signal Scoring (OPTIMIZED 2026-02-16)
-  MIN_SIGNAL_SCORE: 75,         // 0-100 scale (75+ = execute trade, more selective)
-  MULTI_TIMEFRAME_BOOST: 25,    // Bonus points for patterns on multiple timeframes (increased)
-  INDICATOR_WEIGHT: 0.4,        // 40% weight for indicators, 60% for patterns (trend matters!)
-  REQUIRE_TREND_ALIGNMENT: true, // Require MA crossover confirmation
+  // Signal Scoring (SCALPING MODE - 2026-02-16 16:15)
+  MIN_SIGNAL_SCORE: 65,         // LOWERED: 65+ = decent setup (was 75, more opportunities)
+  MULTI_TIMEFRAME_BOOST: 20,    // Bonus points for patterns on multiple timeframes
+  INDICATOR_WEIGHT: 0.35,       // REDUCED: 35% indicators, 65% patterns (patterns lead)
+  REQUIRE_TREND_ALIGNMENT: false, // DISABLED: Allow counter-trend scalps (buy dips anywhere)
   
-  // Data Source (OPTIMIZED 2026-02-16)
+  // RSI Thresholds (SCALPING MODE)
+  RSI_OVERSOLD: 40,             // Early oversold (was 30, catch dips sooner)
+  RSI_OVERBOUGHT: 65,           // Early overbought (was 70, exit sooner)
+  
+  // Data Source (SCALPING MODE)
   BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
   BIRDEYE_BASE_URL: 'https://public-api.birdeye.so',
-  POLL_INTERVAL_MS: 45000,      // Fetch candles every 45s (more responsive, balanced API usage)
+  POLL_INTERVAL_MS: 20000,      // FASTER: Check every 20s (was 45s, 3x faster reaction)
   
   // RPC
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
@@ -87,8 +92,8 @@ export const config = {
   // Indicator Thresholds (OPTIMIZED 2026-02-16)
   INDICATORS: {
     RSI_PERIOD: 14,
-    RSI_OVERSOLD: 30,             // Buy zone (classic TA level, more extreme)
-    RSI_OVERBOUGHT: 70,           // Sell zone (classic TA level, more extreme)
+    RSI_OVERSOLD: 40,             // SCALPING: Early oversold (was 30, catch dips sooner)
+    RSI_OVERBOUGHT: 65,           // SCALPING: Early overbought (was 70, exit sooner)
     
     MACD_FAST: 12,
     MACD_SLOW: 26,

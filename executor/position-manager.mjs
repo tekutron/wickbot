@@ -205,6 +205,21 @@ export class PositionManager {
         }
       }
       
+      // Scalping: Max hold time (no bagholding)
+      else if (config.MAX_HOLD_TIME_MIN && holdTime > config.MAX_HOLD_TIME_MIN * 60 * 1000) {
+        const holdMinutes = Math.floor(holdTime / 60000);
+        console.log(`\n⏰ MAX HOLD TIME! ${holdMinutes} minutes`);
+        console.log(`   P&L: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%`);
+        console.log(`   Exiting to avoid bagholding`);
+        
+        if (executeSellCallback && !config.DRY_RUN) {
+          await executeSellCallback(position, currentPrice, 'MAX_HOLD');
+        } else if (config.DRY_RUN) {
+          console.log(`   🧪 DRY-RUN: Would close position\n`);
+          this.closePosition(position, currentPrice, 'DRY_RUN_SIG', 'MAX_HOLD');
+        }
+      }
+      
       // Log status periodically
       else {
         console.log(`💎 Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${Math.floor(holdTime / 1000)}s`);
