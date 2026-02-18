@@ -381,16 +381,6 @@
         </div>
         
         <div class="card" style="margin-top: 20px;">
-          <h2>🎯 Signal</h2>
-          <div class="signal-display">
-            <div class="signal-action hold" id="signalAction">HOLD</div>
-            <div class="signal-score" id="signalScore">Score: 0/100</div>
-            <div style="margin-top: 15px; font-size: 0.9em; color: #888;" id="signalReason">Waiting for data...</div>
-            <div style="margin-top: 10px; font-size: 0.85em; color: #666;" id="signalBreakdown"></div>
-          </div>
-        </div>
-        
-        <div class="card" style="margin-top: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2>💎 Position</h2>
             <button class="btn-danger" id="closePositionBtn" onclick="closePosition()" style="display: none;">✕ Close</button>
@@ -489,7 +479,7 @@
     
     // Connect to WebSocket
     function connectWebSocket() {
-      ws = new WebSocket('ws://localhost:3000');
+      ws = new WebSocket(`ws://${window.location.host}`);
       
       ws.onopen = () => {
         console.log('Connected to wickbot');
@@ -574,17 +564,7 @@
     }
     
     function updateSignal() {
-      const signal = botState.signal;
-      if (!signal) return;
-      
-      const actionEl = document.getElementById('signalAction');
-      const scoreEl = document.getElementById('signalScore');
-      const reasonEl = document.getElementById('signalReason');
-      
-      actionEl.textContent = signal.action.toUpperCase();
-      actionEl.className = `signal-action ${signal.action}`;
-      scoreEl.textContent = `Score: ${signal.score}/100`;
-      reasonEl.textContent = signal.reason || '';
+      // Signal section removed - signal feed shows live updates instead
     }
     
     function updatePosition() {
@@ -812,51 +792,13 @@
     function switchChartTimeframe() {}
     function loadChartData() {}
     function updatePatternMarkers(patterns) {}
-      
-      const parts = [];
-      if (bullish.length > 0) {
-        parts.push(`<span style="color: #4ade80;">🔼 ${bullish.map(p => p.name).join(', ')}</span>`);
-      }
-      if (bearish.length > 0) {
-        parts.push(`<span style="color: #ef4444;">🔽 ${bearish.map(p => p.name).join(', ')}</span>`);
-      }
-      
-      patternList.innerHTML = parts.join(' | ');
-    }
     
     // ==========================
     // ENHANCED UPDATE FUNCTIONS
     // ==========================
     
     function updateSignal() {
-      const signal = botState.signal;
-      if (!signal) return;
-      
-      const actionEl = document.getElementById('signalAction');
-      const scoreEl = document.getElementById('signalScore');
-      const reasonEl = document.getElementById('signalReason');
-      const breakdownEl = document.getElementById('signalBreakdown');
-      
-      actionEl.textContent = signal.action.toUpperCase();
-      actionEl.className = `signal-action ${signal.action}`;
-      scoreEl.textContent = `Score: ${signal.score}/100`;
-      reasonEl.textContent = signal.reason || 'No reason provided';
-      
-      // Show breakdown if available
-      if (signal.breakdown) {
-        const b = signal.breakdown;
-        breakdownEl.textContent = `Patterns: ${b.patternScore}/100 | Indicators: ${b.indicatorScore}/100 | Bonus: +${b.multiTimeframeBonus}`;
-      }
-      
-      // Update pattern markers
-      if (signal.patterns) {
-        // For now, create fake pattern objects (you'll need real data from server)
-        const patternObjs = signal.patterns.map(name => ({
-          name,
-          type: signal.action === 'buy' ? 'bullish' : signal.action === 'sell' ? 'bearish' : 'neutral'
-        }));
-        updatePatternMarkers(patternObjs);
-      }
+      // Signal section removed - signal feed shows live updates instead
     }
     
     function updatePosition() {
