@@ -142,7 +142,7 @@ function startBot() {
   
   console.log('🚀 Starting bot...');
   
-  const botPath = path.join(__dirname, '../bot.mjs');
+  const botPath = path.join(__dirname, '../bot-fast.mjs');
   botProcess = spawn('node', [botPath], {
     cwd: path.join(__dirname, '..'),
     stdio: ['ignore', 'pipe', 'pipe'],

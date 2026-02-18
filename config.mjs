@@ -14,14 +14,14 @@ export const config = {
   POSITION_SIZE_PCT: 40,        // 40% per trade (~$6, better fee efficiency for scalping)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
-  // Signal-based exits (PRIMARY - pattern/indicator driven)
+  // Signal-based exits (PRIMARY - signal-driven, not TP/SL)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
-  SIGNAL_EXIT_SCORE: 50,        // FIX #1: Min score 50 for exit (was 60, catch reversals earlier)
+  SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
-  // Safety stops (SCALPING MODE - Realistic targets)
-  MAX_PROFIT_PCT: 5,            // FIX #2: Quick exit at +5% (was 10%, more realistic for scalping)
-  SAFETY_STOP_LOSS_PCT: 5,      // TIGHTER: Hard stop at -5% (was 8%, cut losers faster)
-  MAX_HOLD_TIME_MIN: null,      // DISABLED: Let signals control exits (no arbitrary time limit)
+  // Safety stops (BACKUP ONLY - extreme caps, not targets)
+  SAFETY_TP_PCT: 20,            // Extreme profit cap (safety net, not target)
+  SAFETY_SL_PCT: 20,            // Extreme loss cap (safety net, not target)
+  MAX_HOLD_TIME_MIN: null,      // Let signals control timing
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
@@ -29,27 +29,40 @@ export const config = {
   CANDLE_TIMEFRAMES: ['1m', '5m', '15m', '30m', '1h'],
   PRIMARY_TIMEFRAME: '1m',      // SCALPING MODE: 1m for fast entries (was 5m)
   
-  // Signal Scoring (SCALPING MODE - Session 1 fixes)
-  MIN_SIGNAL_SCORE: 65,         // LOWERED: 65+ = decent setup (was 75, more opportunities)
-  MULTI_TIMEFRAME_BOOST: 20,    // Bonus points for patterns on multiple timeframes
-  INDICATOR_WEIGHT: 0.35,       // REDUCED: 35% indicators, 65% patterns (patterns lead)
-  REQUIRE_TREND_ALIGNMENT: false, // DISABLED: Allow counter-trend scalps (buy dips anywhere)
+  // === FAST SIGNAL MODE (Real-Time Dip/Top Detection) ===
+  USE_FAST_SIGNALS: true,       // Use new incremental engine (vs old pattern-based)
   
-  // FIX #3: Pattern diversity check (avoid stale data)
-  REQUIRE_PATTERN_DIVERSITY: true,  // Reject if same patterns repeat 5+ times
-  PATTERN_DIVERSITY_WINDOW: 5,      // Check last 5 signals
+  // Update frequency
+  UPDATE_INTERVAL_MS: 5000,     // Check every 5 seconds (was 20s, 4x faster)
   
-  // FIX #4: Minimum movement filter (avoid flat markets)
-  MIN_CANDLE_BODY_PCT: 0.5,     // Skip trades if 1m candle body < 0.5% (consolidation filter)
+  // Signal confidence thresholds (algo-trade inspired)
+  MIN_BUY_CONFIDENCE: 67,       // Need 4/6 conditions (67% = 4 out of 6)
+  MIN_SELL_CONFIDENCE: 60,      // Need 3/5 conditions (60% = 3 out of 5)
   
-  // RSI Thresholds (SCALPING MODE)
-  RSI_OVERSOLD: 40,             // Early oversold (was 30, catch dips sooner)
-  RSI_OVERBOUGHT: 65,           // Early overbought (was 70, exit sooner)
+  // Dip/Top detection thresholds
+  RSI_DIP_THRESHOLD: 35,        // Lower RSI = deeper dip
+  RSI_TOP_THRESHOLD: 65,        // Higher RSI = clear top
+  BB_TOUCH_TOLERANCE: 0.001,    // 0.1% tolerance for "touching" bands
   
-  // Data Source (SCALPING MODE)
+  // Exit strategy
+  EXIT_ON_OPPOSITE_SIGNAL: true,  // Sell when sell signal triggers (not fixed TP)
+  EXIT_CONFIDENCE_MIN: 60,        // Min confidence for signal-driven exit
+  
+  // Minimum movement filter (avoid flat markets)
+  MIN_CANDLE_BODY_PCT: 0.5,     // Skip if candle body < 0.5%
+  
+  // === LEGACY PATTERN MODE (Fallback) ===
+  MIN_SIGNAL_SCORE: 65,         // Old pattern-based score threshold
+  MULTI_TIMEFRAME_BOOST: 20,
+  INDICATOR_WEIGHT: 0.35,
+  REQUIRE_TREND_ALIGNMENT: false,
+  REQUIRE_PATTERN_DIVERSITY: true,
+  PATTERN_DIVERSITY_WINDOW: 5,
+  
+  // Data Source
   BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
   BIRDEYE_BASE_URL: 'https://public-api.birdeye.so',
-  POLL_INTERVAL_MS: 20000,      // FASTER: Check every 20s (was 45s, 3x faster reaction)
+  POLL_INTERVAL_MS: 5000,       // FAST MODE: Check every 5s (was 20s, 4x faster)
   
   // RPC
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',

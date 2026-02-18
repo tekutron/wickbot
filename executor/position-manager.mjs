@@ -179,10 +179,10 @@ export class PositionManager {
         }
       }
       
-      // Safety: Max profit cap (prevent greed)
-      else if (pnl >= config.MAX_PROFIT_PCT) {
-        console.log(`\n🎯 MAX PROFIT CAP! +${pnl.toFixed(2)}%`);
-        console.log(`   Taking profit before reversal`);
+      // Safety: Max profit cap (extreme backup, not target)
+      else if (pnl >= config.SAFETY_TP_PCT) {
+        console.log(`\n🎯 SAFETY PROFIT CAP! +${pnl.toFixed(2)}%`);
+        console.log(`   Extreme profit - taking it before reversal`);
         
         if (executeSellCallback && !config.DRY_RUN) {
           await executeSellCallback(position, currentPrice, 'MAX_PROFIT');
@@ -192,10 +192,10 @@ export class PositionManager {
         }
       }
       
-      // Safety: Stop loss (prevent catastrophic loss)
-      else if (pnl <= -config.SAFETY_STOP_LOSS_PCT) {
+      // Safety: Stop loss (extreme backup, prevent disaster)
+      else if (pnl <= -config.SAFETY_SL_PCT) {
         console.log(`\n🛑 SAFETY STOP LOSS! ${pnl.toFixed(2)}%`);
-        console.log(`   Cutting losses to prevent disaster`);
+        console.log(`   Extreme loss - cutting to prevent disaster`);
         
         if (executeSellCallback && !config.DRY_RUN) {
           await executeSellCallback(position, currentPrice, 'SAFETY_SL');

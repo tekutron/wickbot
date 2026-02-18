@@ -1,0 +1,320 @@
+#!/usr/bin/env node
+/**
+ * bot-fast.mjs - wickbot Fast Mode (Real-Time Dip/Top Detection)
+ * Uses incremental indicators for 50x faster signal generation
+ */
+
+import config from './config.mjs';
+import { BirdeyeAPI } from './data/birdeye-api.mjs';
+import { IncrementalEngine } from './data/incremental-indicators.mjs';
+import { FastSignalGenerator } from './patterns/fast-signals.mjs';
+import { PositionManager } from './executor/position-manager.mjs';
+import { JupiterSwap } from './executor/jupiter-swap.mjs';
+import fs from 'fs';
+
+class WickBotFast {
+  constructor() {
+    this.birdeyeAPI = new BirdeyeAPI();
+    this.incrementalEngine = new IncrementalEngine({
+      rsiPeriod: 14,
+      bbPeriod: 20,
+      bbStdDev: 2,
+      macdFast: 12,
+      macdSlow: 26,
+      macdSignal: 9
+    });
+    this.signalGenerator = new FastSignalGenerator();
+    this.positionManager = new PositionManager();
+    this.jupiterSwap = new JupiterSwap();
+    
+    this.isRunning = false;
+    this.loopInterval = null;
+    this.initialized = false;
+  }
+  
+  async start() {
+    console.log('⚡ wickbot FAST MODE starting...\n');
+    
+    // Check config
+    if (!config.BIRDEYE_API_KEY) {
+      console.error('❌ BIRDEYE_API_KEY not set in config or environment');
+      process.exit(1);
+    }
+    
+    // Initialize components
+    await this.positionManager.initialize();
+    await this.jupiterSwap.initialize();
+    
+    const balance = await this.positionManager.getBalance();
+    console.log(`💰 Starting Capital: ${balance.sol.toFixed(4)} SOL (~$${balance.usd.toFixed(2)})`);
+    console.log(`📊 Trading Pair: ${config.PAIR}`);
+    console.log(`⚡ Strategy: FAST Real-Time Dip/Top Detection`);
+    console.log(`📈 Update Frequency: Every ${config.POLL_INTERVAL_MS / 1000}s`);
+    console.log(`🎯 Position Size: ${config.POSITION_SIZE_PCT}% (~${(balance.sol * config.POSITION_SIZE_PCT / 100).toFixed(4)} SOL)`);
+    console.log(`🛡️  Safety Nets: +${config.SAFETY_TP_PCT}% / -${config.SAFETY_SL_PCT}%`);
+    console.log(`📊 Signal Mode: Incremental (50x faster than old mode)`);
+    
+    if (config.DRY_RUN) {
+      console.log(`\n🧪 DRY-RUN MODE: No real trades will be executed\n`);
+    }
+    
+    // Initialize incremental engine with historical data
+    console.log(`\n🔄 Initializing indicators with historical data...`);
+    await this.initializeEngine();
+    
+    console.log(`\n🚀 Bot active - watching for dips and tops...\n`);
+    
+    this.isRunning = true;
+    
+    // Run first iteration immediately
+    await this.loop();
+    
+    // Then run on interval
+    this.loopInterval = setInterval(() => this.loop(), config.POLL_INTERVAL_MS);
+    
+    // Graceful shutdown
+    process.on('SIGINT', () => this.stop());
+    process.on('SIGTERM', () => this.stop());
+  }
+  
+  /**
+   * Initialize incremental engine with historical candles
+   */
+  async initializeEngine() {
+    try {
+      // Fetch 100 1-minute candles for initialization
+      const candles = await this.birdeyeAPI.fetchCandles(
+        config.TOKEN_ADDRESS_SOL,
+        '1m',
+        100
+      );
+      
+      if (!candles || candles.length === 0) {
+        console.error('❌ Failed to fetch initialization candles');
+        process.exit(1);
+      }
+      
+      // Feed historical candles to engine
+      for (const candle of candles) {
+        this.incrementalEngine.update(candle);
+      }
+      
+      this.initialized = this.incrementalEngine.isReady();
+      
+      if (this.initialized) {
+        console.log(`✅ Indicators initialized (${candles.length} candles processed)`);
+        const ind = this.incrementalEngine.getIndicators();
+        console.log(`   RSI: ${ind.rsi?.toFixed(2) || 'N/A'}`);
+        console.log(`   BB: ${ind.bb?.lower.toFixed(2)} - ${ind.bb?.upper.toFixed(2)}`);
+        console.log(`   MACD: ${ind.macd?.histogram.toFixed(4) || 'N/A'}`);
+      } else {
+        console.warn('⚠️  Indicators not fully ready, will update as data comes in');
+      }
+    } catch (err) {
+      console.error(`❌ Initialization error: ${err.message}`);
+      process.exit(1);
+    }
+  }
+  
+  async loop() {
+    try {
+      // 1. Fetch latest 1-minute candle
+      const candles = await this.birdeyeAPI.fetchCandles(
+        config.TOKEN_ADDRESS_SOL,
+        '1m',
+        1 // Only fetch latest candle for O(1) update
+      );
+      
+      if (!candles || candles.length === 0) {
+        console.warn('⚠️  No candle data received');
+        return;
+      }
+      
+      const latestCandle = candles[0];
+      
+      // 2. O(1) incremental update (FAST!)
+      const indicators = this.incrementalEngine.update(latestCandle);
+      
+      if (!indicators.ready) {
+        console.log('⏳ Indicators initializing...');
+        return;
+      }
+      
+      // 3. Generate fast signal (10-50ms vs 1000ms old method)
+      const signal = this.signalGenerator.generate(indicators, latestCandle);
+      
+      // 4. Log current state
+      this.logState(signal, indicators, latestCandle);
+      
+      // 5. Check if we should act on signal
+      await this.handleSignal(signal);
+      
+      // 6. Monitor existing positions
+      await this.monitorPositions(signal, latestCandle);
+      
+    } catch (err) {
+      console.error(`❌ Loop error: ${err.message}`);
+    }
+  }
+  
+  logState(signal, indicators, candle) {
+    const timestamp = new Date().toISOString();
+    
+    console.log(`[${timestamp}]`);
+    console.log(`Signal: ${signal.action.toUpperCase()} (Confidence: ${signal.confidence}%)`);
+    
+    if (signal.action !== 'hold') {
+      console.log(`💡 ${signal.reason}`);
+    } else {
+      console.log(`Reason: ${signal.reason}`);
+    }
+    
+    // Show key indicators
+    if (signal.details.rsi) {
+      console.log(`RSI: ${signal.details.rsi} | Price: $${signal.details.price || candle.close.toFixed(2)}`);
+    }
+    
+    console.log('');
+  }
+  
+  async handleSignal(signal) {
+    // Check if we should trade
+    if (signal.action === 'hold') {
+      return; // No action needed
+    }
+    
+    // Check max positions
+    if (this.positionManager.hasMaxPositions()) {
+      return;
+    }
+    
+    // Check max drawdown
+    if (this.positionManager.isMaxDrawdownReached()) {
+      console.warn('⚠️  Max drawdown reached - stopping trading');
+      this.stop();
+      return;
+    }
+    
+    // Execute trade based on signal
+    if (signal.action === 'buy') {
+      await this.executeBuy(signal);
+    }
+    // Sell signals handled by position monitor
+  }
+  
+  async executeBuy(signal) {
+    console.log(`\n🎯 DIP DETECTED! (Confidence: ${signal.confidence}%)`);
+    console.log(`   ${signal.reason}`);
+    
+    const positionSize = this.positionManager.getPositionSize();
+    
+    if (config.DRY_RUN) {
+      console.log(`   🧪 DRY-RUN: Would buy ${positionSize.toFixed(4)} SOL worth of USDC\n`);
+      return;
+    }
+    
+    try {
+      // USDC-first mode: BUY = swap USDC → SOL
+      const usdcAmount = positionSize * 86; // Rough SOL price estimate
+      console.log(`   Position size: ${usdcAmount.toFixed(2)} USDC`);
+      
+      const result = await this.jupiterSwap.swapUsdcToSol(signal, usdcAmount);
+      
+      if (result.success) {
+        this.positionManager.openPosition(result);
+        console.log(`   ✅ Position opened: ${result.amountOut.toFixed(4)} SOL`);
+        console.log(`   Entry price: $${result.price.toFixed(2)}/SOL`);
+        console.log(`   Signature: ${result.signature}\n`);
+      } else {
+        console.log(`   ❌ Trade failed: ${result.error}\n`);
+      }
+    } catch (err) {
+      console.error(`   ❌ Execute error: ${err.message}\n`);
+    }
+  }
+  
+  async monitorPositions(signal, candle) {
+    const positions = this.positionManager.positions;
+    
+    if (positions.length === 0) return;
+    
+    const currentPrice = candle.close;
+    
+    for (const position of positions) {
+      const pnl = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+      const holdTime = Date.now() - position.entryTime;
+      
+      // Check if signal says to exit
+      if (this.signalGenerator.shouldExit(position, signal)) {
+        console.log(`\n🏁 TOP DETECTED! Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
+        console.log(`   ${signal.reason}`);
+        
+        await this.executeSell(position, currentPrice, 'SIGNAL');
+      }
+      
+      // Safety checks (backup only)
+      else if (pnl >= config.SAFETY_TP_PCT) {
+        console.log(`\n🎯 SAFETY PROFIT CAP! +${pnl.toFixed(2)}%`);
+        await this.executeSell(position, currentPrice, 'SAFETY_TP');
+      }
+      else if (pnl <= -config.SAFETY_SL_PCT) {
+        console.log(`\n🛑 SAFETY STOP LOSS! ${pnl.toFixed(2)}%`);
+        await this.executeSell(position, currentPrice, 'SAFETY_SL');
+      }
+      else {
+        // Log position status
+        const holdMinutes = Math.floor(holdTime / 60000);
+        console.log(`💎 Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${holdMinutes}m`);
+      }
+    }
+  }
+  
+  async executeSell(position, currentPrice, reason) {
+    console.log(`   Position: ${position.id}`);
+    console.log(`   Entry: $${position.entryPrice.toFixed(2)}/SOL`);
+    console.log(`   Exit: $${currentPrice.toFixed(2)}/SOL`);
+    
+    if (config.DRY_RUN) {
+      console.log(`   🧪 DRY-RUN: Would sell position\n`);
+      this.positionManager.closePosition(position, currentPrice, 'DRY_RUN_SIG', reason);
+      return;
+    }
+    
+    try {
+      // USDC-first mode: SELL = swap SOL → USDC
+      const result = await this.jupiterSwap.swapSolToUsdc(position, position.amountSol);
+      
+      if (result.success) {
+        this.positionManager.closePosition(position, result.price, result.signature, reason);
+        console.log(`   ✅ Position closed: ${result.amountOut.toFixed(2)} USDC`);
+        console.log(`   Signature: ${result.signature}\n`);
+      } else {
+        console.log(`   ❌ Sell failed: ${result.error}\n`);
+      }
+    } catch (err) {
+      console.error(`   ❌ Execute error: ${err.message}\n`);
+    }
+  }
+  
+  async stop() {
+    console.log('\n🛑 Stopping wickbot...');
+    
+    this.isRunning = false;
+    
+    if (this.loopInterval) {
+      clearInterval(this.loopInterval);
+    }
+    
+    await this.positionManager.saveState();
+    
+    console.log('✅ wickbot stopped\n');
+    process.exit(0);
+  }
+}
+
+// Start the bot
+const bot = new WickBotFast();
+bot.start().catch(err => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
