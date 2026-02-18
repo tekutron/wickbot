@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🕯️ wickbot Dashboard</title>
-  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- Lightweight Charts removed - using simple log feed instead for better performance -->
   <style>
     * {
       margin: 0;
@@ -369,17 +369,14 @@
         <!-- PRICE CHART -->
         <div class="card" style="margin-top: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>📈 SOL/USDC Chart</h2>
-            <select id="chartTimeframe" onchange="switchChartTimeframe()" style="padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0;">
-              <option value="1m">1min</option>
-              <option value="5m" selected>5min</option>
-              <option value="15m">15min</option>
-              <option value="1h">1hour</option>
-            </select>
+            <h2>📊 Live Signal Feed</h2>
+            <button onclick="clearSignalLog()" style="padding: 6px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0; cursor: pointer;">Clear</button>
           </div>
-          <div id="chart" style="height: 400px; position: relative;"></div>
-          <div id="patternMarkers" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; min-height: 40px;">
-            <div style="font-size: 0.85em; color: #888;">Detected Patterns: <span id="patternList" style="color: #e0e0e0;">None</span></div>
+          <div id="signalLog" style="height: 400px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 15px; font-family: 'Monaco', 'Courier New', monospace; font-size: 13px; line-height: 1.6;">
+            <div style="color: #888; text-align: center; padding: 20px;">Waiting for signals...</div>
+          </div>
+          <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.85em; color: #888;">
+            🟢 BUY &nbsp;|&nbsp; 🔴 SELL &nbsp;|&nbsp; ⚪ HOLD &nbsp;|&nbsp; Updates every 5 seconds
           </div>
         </div>
         
@@ -520,6 +517,7 @@
       } else if (type === 'signal') {
         botState.signal = data;
         updateSignal();
+        addSignalToLog(data); // Add to live feed
       } else if (type === 'position') {
         botState.position = data;
         updatePosition();
@@ -738,100 +736,82 @@
     // CHART FUNCTIONALITY
     // ==========================
     
-    let chart = null;
-    let candleSeries = null;
-    let currentTimeframe = '5m';
+    let signalLogEntries = [];
+    const MAX_LOG_ENTRIES = 50;
     
-    function initializeChart() {
-      const chartContainer = document.getElementById('chart');
-      
-      chart = LightweightCharts.createChart(chartContainer, {
-        width: chartContainer.clientWidth,
-        height: 400,
-        layout: {
-          background: { color: 'transparent' },
-          textColor: '#e0e0e0',
-        },
-        grid: {
-          vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-          horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        },
-        crosshair: {
-          mode: LightweightCharts.CrosshairMode.Normal,
-        },
-        rightPriceScale: {
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-        },
-        timeScale: {
-          borderColor: 'rgba(255, 255, 255, 0.1)',
-          timeVisible: true,
-          secondsVisible: false,
-        },
-      });
-      
-      candleSeries = chart.addCandlestickSeries({
-        upColor: '#4ade80',
-        downColor: '#ef4444',
-        borderUpColor: '#4ade80',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#4ade80',
-        wickDownColor: '#ef4444',
-      });
-      
-      // Handle window resize
-      window.addEventListener('resize', () => {
-        chart.applyOptions({ width: chartContainer.clientWidth });
-      });
-      
-      // Load initial data
-      loadChartData();
-      
-      // Refresh chart every 45 seconds (matches bot polling)
-      setInterval(() => {
-        loadChartData();
-      }, 45000);
+    function initializeSignalLog() {
+      // Signal log is ready, no initialization needed
+      console.log('Signal log initialized');
     }
     
-    async function loadChartData() {
-      try {
-        // Fetch candle data from server (you'll need to add this endpoint)
-        const response = await fetch(`/api/candles?timeframe=${currentTimeframe}`);
-        if (!response.ok) return;
-        
-        const candles = await response.json();
-        if (candles && candles.length > 0) {
-          const chartData = candles.map(c => ({
-            time: Math.floor(c.time / 1000),
-            open: c.open,
-            high: c.high,
-            low: c.low,
-            close: c.close
-          }));
-          candleSeries.setData(chartData);
-        }
-      } catch (err) {
-        console.error('Failed to load chart data:', err);
+    function addSignalToLog(signal) {
+      const timestamp = new Date(signal.timestamp).toLocaleTimeString();
+      const action = signal.action.toUpperCase();
+      const confidence = signal.score || 0;
+      const reason = signal.reason || 'No reason provided';
+      
+      // Color based on action
+      let color = '#888';
+      let icon = '⚪';
+      if (action === 'BUY') {
+        color = '#4ade80';
+        icon = '🟢';
+      } else if (action === 'SELL') {
+        color = '#ef4444';
+        icon = '🔴';
       }
-    }
-    
-    function switchChartTimeframe() {
-      const selector = document.getElementById('chartTimeframe');
-      currentTimeframe = selector.value;
-      loadChartData();
-    }
-    
-    function updatePatternMarkers(patterns) {
-      const patternList = document.getElementById('patternList');
       
-      if (!patterns || patterns.length === 0) {
-        patternList.textContent = 'None';
-        patternList.style.color = '#888';
+      // Create log entry
+      const entry = {
+        timestamp,
+        action,
+        confidence,
+        reason,
+        color,
+        icon
+      };
+      
+      signalLogEntries.unshift(entry); // Add to beginning
+      if (signalLogEntries.length > MAX_LOG_ENTRIES) {
+        signalLogEntries.pop(); // Remove oldest
+      }
+      
+      updateSignalLogDisplay();
+    }
+    
+    function updateSignalLogDisplay() {
+      const logContainer = document.getElementById('signalLog');
+      
+      if (signalLogEntries.length === 0) {
+        logContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">Waiting for signals...</div>';
         return;
       }
       
-      // Group patterns by type
-      const bullish = patterns.filter(p => p.type === 'bullish');
-      const bearish = patterns.filter(p => p.type === 'bearish');
+      const html = signalLogEntries.map(entry => `
+        <div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #666;">${entry.timestamp}</span>
+            <span style="color: ${entry.color}; font-weight: bold;">${entry.icon} ${entry.action} ${entry.confidence > 0 ? `(${entry.confidence}%)` : ''}</span>
+          </div>
+          <div style="color: #aaa; font-size: 12px; margin-top: 4px;">${entry.reason}</div>
+        </div>
+      `).join('');
+      
+      logContainer.innerHTML = html;
+      
+      // Auto-scroll to top (newest entry)
+      logContainer.scrollTop = 0;
+    }
+    
+    function clearSignalLog() {
+      signalLogEntries = [];
+      updateSignalLogDisplay();
+    }
+    
+    // Legacy function stubs (no-op, for compatibility)
+    function switchChartTimeframe() {}
+    function loadChartData() {}
+    function updatePatternMarkers(patterns) {}
       
       const parts = [];
       if (bullish.length > 0) {
@@ -952,7 +932,7 @@
     }
     
     // Initialize chart on page load
-    setTimeout(initializeChart, 100);
+    setTimeout(initializeSignalLog, 100);
   </script>
 </body>
 </html>
