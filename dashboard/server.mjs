@@ -186,8 +186,11 @@ function parseOutput(output) {
   // This is a simplified version - expand based on actual output format
   
   if (output.includes('Signal:')) {
-    // Extract signal info
-    const match = output.match(/Signal: (\w+) \(Score: (\d+)\/100\)/);
+    // Extract signal info (support both old "Score" and new "Confidence" format)
+    const matchOld = output.match(/Signal: (\w+) \(Score: (\d+)\/100\)/);
+    const matchNew = output.match(/Signal: (\w+) \(Confidence: (\d+)%\)/);
+    const match = matchNew || matchOld;
+    
     if (match) {
       botState.signal = {
         action: match[1],
