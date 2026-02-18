@@ -76,6 +76,9 @@ export const config = {
   DASHBOARD_PORT: 3000,
   DASHBOARD_HOST: 'localhost',
   
+  // Testing
+  DRY_RUN: true,                // DRY RUN: Log trades without executing
+  
   // Logging
   LOG_LEVEL: 'info',            // debug, info, warn, error
   LOG_FILE: './logs/wickbot.log',
