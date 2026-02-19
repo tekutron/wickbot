@@ -25,10 +25,16 @@ export const config = {
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
   SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
+  // MICRO-SCALP MODE (2026-02-19) - Based on trade analysis
+  QUICK_TP_1: 1.5,              // First profit target (take profit quickly)
+  QUICK_TP_2: 3.0,              // Second profit target (max target)
+  QUICK_SL: 2.0,                // Tight stop loss (cut losses fast)
+  MAX_HOLD_TIME_SEC: 10,        // Force exit after 10 seconds (micro-scalp)
+  
   // Safety stops (BACKUP ONLY - extreme caps, not targets)
   SAFETY_TP_PCT: 20,            // Extreme profit cap (safety net, not target)
   SAFETY_SL_PCT: 20,            // Extreme loss cap (safety net, not target)
-  MAX_HOLD_TIME_MIN: null,      // Let signals control timing
+  MAX_HOLD_TIME_MIN: null,      // Deprecated (using MAX_HOLD_TIME_SEC now)
   
   MAX_DRAWDOWN_PCT: 30,         // Stop trading if capital drops 30%
   
@@ -46,6 +52,11 @@ export const config = {
   // Optimized for volatile low-cap tokens (CWIF, etc.)
   MIN_BUY_CONFIDENCE: 50,       // Need 3/6 conditions (50% = 3 out of 6) - catches dips faster
   MIN_SELL_CONFIDENCE: 50,      // Need 3/5 conditions (50% = 3 out of 5) - exits tops faster
+  
+  // Entry confirmation (2026-02-19) - Avoid buying tops
+  REQUIRE_ENTRY_CONFIRMATION: true,   // Wait for reversal confirmation
+  ENTRY_DIP_FROM_HIGH_PCT: 5,         // Must be 5% below recent high (5-candle lookback)
+  MIN_VOLUME_RATIO: 2.0,              // Require 2x average volume for entry
   
   // Dip/Top detection thresholds (AGGRESSIVE - catches moves earlier)
   RSI_DIP_THRESHOLD: 45,        // Higher = catch dips before extreme oversold

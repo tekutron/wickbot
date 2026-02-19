@@ -95,7 +95,7 @@ class WickBotFast {
     console.log(`⚡ Strategy: ${config.isCustomTokenMode() ? 'Custom Token' : 'SOL/USDC'} - Real-Time Dip/Top Detection`);
     console.log(`📈 Update Frequency: Every ${config.POLL_INTERVAL_MS / 1000}s`);
     console.log(`🎯 Position Size: ${config.POSITION_SIZE_PCT}% (~${(balance.sol * config.POSITION_SIZE_PCT / 100).toFixed(4)} SOL)`);
-    console.log(`🛡️  Safety Nets: +${config.SAFETY_TP_PCT}% / -${config.SAFETY_SL_PCT}%`);
+    console.log(`⚡ Quick Exit: +${config.QUICK_TP_1}%/+${config.QUICK_TP_2}% | -${config.QUICK_SL}% | ${config.MAX_HOLD_TIME_SEC}s max`);
     console.log(`📊 Signal Mode: Incremental (50x faster than old mode)`);
     
     if (config.DRY_RUN) {
@@ -285,6 +285,34 @@ class WickBotFast {
     console.log(`\n🎯 DIP DETECTED! (Confidence: ${signal.confidence}%)`);
     console.log(`   ${signal.reason}`);
     
+    // ENTRY CONFIRMATION (2026-02-19 optimization)
+    if (config.REQUIRE_ENTRY_CONFIRMATION) {
+      // 1. Check if price is far enough from recent high
+      const recentCandles = this.priceHistory.slice(-5);
+      const recentHigh = Math.max(...recentCandles.map(c => c.high));
+      const currentPrice = this.priceHistory[this.priceHistory.length - 1].close;
+      const priceFromHigh = ((currentPrice - recentHigh) / recentHigh) * 100;
+      
+      if (priceFromHigh > -config.ENTRY_DIP_FROM_HIGH_PCT) {
+        console.log(`   ⚠️  Price only ${priceFromHigh.toFixed(2)}% from recent high (need ${-config.ENTRY_DIP_FROM_HIGH_PCT}%)`);
+        console.log(`   ⏸️  Waiting for deeper dip...\n`);
+        return;
+      }
+      
+      // 2. Check volume confirmation
+      if (signal.volume5m && signal.volume1hAvg) {
+        const volumeRatio = signal.volume5m / signal.volume1hAvg;
+        if (volumeRatio < config.MIN_VOLUME_RATIO) {
+          console.log(`   📊 Volume ratio ${volumeRatio.toFixed(2)}x too low (need ${config.MIN_VOLUME_RATIO}x)`);
+          console.log(`   ⏸️  Waiting for volume spike...\n`);
+          return;
+        }
+        console.log(`   ✅ Volume confirmed: ${volumeRatio.toFixed(2)}x average`);
+      }
+      
+      console.log(`   ✅ Entry confirmed: ${priceFromHigh.toFixed(2)}% below recent high`);
+    }
+    
     const positionSize = this.positionManager.getPositionSize();
     
     if (config.DRY_RUN) {
@@ -382,16 +410,38 @@ class WickBotFast {
     for (const position of positions) {
       const pnl = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
       const holdTime = Date.now() - position.entryTime;
+      const holdTimeSec = holdTime / 1000;
       
-      // Check if signal says to exit
-      if (this.signalGenerator.shouldExit(position, signal)) {
+      // MICRO-SCALP EXIT LOGIC (2026-02-19 optimization)
+      // Priority: Hold time → Profit targets → Stop loss → Signal
+      
+      // 1. MAX HOLD TIME - Force exit after 10 seconds
+      if (holdTimeSec >= config.MAX_HOLD_TIME_SEC) {
+        console.log(`\n⏱️  MAX HOLD TIME (${holdTimeSec.toFixed(0)}s) - Force exit at ${pnl.toFixed(2)}%`);
+        await this.executeSell(position, currentPrice, 'MAX_HOLD');
+      }
+      // 2. QUICK PROFIT TARGET 2 - Take profit at +3%
+      else if (pnl >= config.QUICK_TP_2) {
+        console.log(`\n🎯 QUICK PROFIT TARGET 2! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
+        await this.executeSell(position, currentPrice, 'QUICK_TP2');
+      }
+      // 3. QUICK PROFIT TARGET 1 - Take profit at +1.5%
+      else if (pnl >= config.QUICK_TP_1) {
+        console.log(`\n💰 QUICK PROFIT TARGET 1! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
+        await this.executeSell(position, currentPrice, 'QUICK_TP1');
+      }
+      // 4. QUICK STOP LOSS - Cut losses at -2%
+      else if (pnl <= -config.QUICK_SL) {
+        console.log(`\n🛑 QUICK STOP LOSS! ${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
+        await this.executeSell(position, currentPrice, 'QUICK_SL');
+      }
+      // 5. SIGNAL EXIT - Exit on opposite signal
+      else if (this.signalGenerator.shouldExit(position, signal)) {
         console.log(`\n🏁 TOP DETECTED! Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
         console.log(`   ${signal.reason}`);
-        
         await this.executeSell(position, currentPrice, 'SIGNAL');
       }
-      
-      // Safety checks (backup only)
+      // 6. SAFETY CAPS (backup only, should rarely trigger)
       else if (pnl >= config.SAFETY_TP_PCT) {
         console.log(`\n🎯 SAFETY PROFIT CAP! +${pnl.toFixed(2)}%`);
         await this.executeSell(position, currentPrice, 'SAFETY_TP');
@@ -402,9 +452,9 @@ class WickBotFast {
       }
       else {
         // Log position status
-        const holdMinutes = Math.floor(holdTime / 60000);
+        const holdSec = Math.floor(holdTimeSec);
         const pnlColor = pnl > 0 ? '🟢' : '🔴';
-        console.log(`💎 ${pnlColor} Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${holdMinutes}m | Entry: $${position.entryPrice.toFixed(6)}`);
+        console.log(`💎 ${pnlColor} Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${holdSec}s | Entry: $${position.entryPrice.toFixed(6)}`);
       }
     }
   }
