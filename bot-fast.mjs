@@ -8,6 +8,8 @@ import config from './config.mjs';
 import { BirdeyeAPI } from './data/birdeye-api.mjs';
 import { DexScreenerCandles } from './data/dexscreener-candles.mjs';
 import { IncrementalEngine } from './data/incremental-indicators.mjs';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import fetch from 'node-fetch';
 import { FastSignalGenerator } from './patterns/fast-signals.mjs';
 import { PositionManager } from './executor/position-manager.mjs';
@@ -34,6 +36,43 @@ class WickBotFast {
     this.loopInterval = null;
     this.initialized = false;
     this.priceAPI = null; // Will be set to 'birdeye' or 'dexscreener'
+    this.connection = new Connection(config.RPC_URL, 'confirmed');
+  }
+  
+  /**
+   * Get actual token balance from blockchain (critical for avoiding slippage errors)
+   */
+  async getActualTokenBalance(tokenMint) {
+    try {
+      const walletPubkey = this.positionManager.wallet.publicKey;
+      
+      // Check both token programs
+      const token2022Accounts = await this.connection.getParsedTokenAccountsByOwner(
+        walletPubkey,
+        { programId: TOKEN_2022_PROGRAM_ID }
+      );
+      
+      const standardAccounts = await this.connection.getParsedTokenAccountsByOwner(
+        walletPubkey,
+        { programId: TOKEN_PROGRAM_ID }
+      );
+      
+      for (const account of [...token2022Accounts.value, ...standardAccounts.value]) {
+        const data = account.account.data.parsed.info;
+        if (data.mint === tokenMint) {
+          return {
+            raw: parseInt(data.tokenAmount.amount),
+            display: data.tokenAmount.uiAmount.toString(),
+            decimals: data.tokenAmount.decimals
+          };
+        }
+      }
+      
+      return null;
+    } catch (err) {
+      console.error(`   ⚠️  Failed to fetch actual balance: ${err.message}`);
+      return null;
+    }
   }
   
   async start() {
@@ -300,6 +339,17 @@ class WickBotFast {
       }
       
       if (result.success) {
+        // CRITICAL: Fetch ACTUAL token balance from blockchain (not Jupiter quote)
+        // Jupiter quotes can differ from actual due to slippage
+        if (config.isCustomTokenMode()) {
+          const actualBalance = await this.getActualTokenBalance(config.CUSTOM_TOKEN_ADDRESS);
+          if (actualBalance) {
+            result.amountOutRaw = actualBalance.raw;
+            result.amountOut = actualBalance.display;
+            console.log(`   🔍 Actual tokens received: ${actualBalance.display} (verified on-chain)`);
+          }
+        }
+        
         this.positionManager.openPosition(result);
         console.log(`   ✅ Position opened: ${result.amountOut}`);
         console.log(`   Signature: ${result.signature}\n`);
