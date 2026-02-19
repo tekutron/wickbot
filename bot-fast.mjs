@@ -288,8 +288,8 @@ class WickBotFast {
     
     // ENTRY CONFIRMATION (2026-02-19 optimization)
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
-      // Use candle data from signal generator
-      const candles = this.signalGenerator?.candles || [];
+      // Use candle data from incremental engine
+      const candles = this.incrementalEngine?.candles || [];
       
       if (candles.length < 5) {
         console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping confirmation\n`);
