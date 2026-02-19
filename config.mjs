@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: 'F5RyYFSXMuTXPjcLBTDr9ihy7ZUw93f1b3gLn1U1pump',
-  CUSTOM_TOKEN_SYMBOL: 'PUSH',
+  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
+  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
