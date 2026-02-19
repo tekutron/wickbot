@@ -288,6 +288,11 @@ class WickBotFast {
     // ENTRY CONFIRMATION (2026-02-19 optimization)
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
       // 1. Check if price is far enough from recent high
+      if (!this.priceHistory || this.priceHistory.length < 5) {
+        console.log(`   ⚠️  Not enough price history (${this.priceHistory?.length || 0} candles) - skipping confirmation\n`);
+        return;
+      }
+      
       const recentCandles = this.priceHistory.slice(-5);
       const recentHigh = Math.max(...recentCandles.map(c => c.high));
       const currentPrice = this.priceHistory[this.priceHistory.length - 1].close;
