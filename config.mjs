@@ -12,7 +12,7 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.01,     // After WAR disaster, ~0.01 SOL remaining (2026-02-19)
+  STARTING_CAPITAL_SOL: 0.1839,   // After cleanup: 0.1839 SOL available (2026-02-18 21:36)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 20,        // 20% per trade (conservative risk management)
