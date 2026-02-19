@@ -91,22 +91,33 @@ export class DexScreenerCandles {
         // Estimate price at this point in time
         let estimatedPrice = currentPrice;
         
+        // Helper to calculate price with clamped change ratio
+        const calculatePrice = (change, timeRatio) => {
+          // Clamp extreme changes to ±95% to avoid negative bases
+          const clampedChange = Math.max(-95, Math.min(500, change));
+          const changeRatio = 1 - (clampedChange / 100);
+          
+          // Ensure positive base (handle edge cases)
+          if (changeRatio <= 0) {
+            // Extreme dump - use exponential decay
+            return currentPrice * Math.exp(-5 * timeRatio);
+          }
+          
+          return currentPrice * Math.pow(changeRatio, timeRatio);
+        };
+        
         if (minutesAgo <= 5 && priceChange.m5 !== undefined) {
           // Within last 5 minutes - use m5 change
-          const changeRatio = 1 - (priceChange.m5 / 100);
-          estimatedPrice = currentPrice * Math.pow(changeRatio, minutesAgo / 5);
+          estimatedPrice = calculatePrice(priceChange.m5, minutesAgo / 5);
         } else if (minutesAgo <= 60 && priceChange.h1 !== undefined) {
           // Within last hour - use h1 change
-          const changeRatio = 1 - (priceChange.h1 / 100);
-          estimatedPrice = currentPrice * Math.pow(changeRatio, minutesAgo / 60);
+          estimatedPrice = calculatePrice(priceChange.h1, minutesAgo / 60);
         } else if (minutesAgo <= 360 && priceChange.h6 !== undefined) {
           // Within last 6 hours - use h6 change
-          const changeRatio = 1 - (priceChange.h6 / 100);
-          estimatedPrice = currentPrice * Math.pow(changeRatio, minutesAgo / 360);
+          estimatedPrice = calculatePrice(priceChange.h6, minutesAgo / 360);
         } else if (priceChange.h24 !== undefined) {
           // Fallback to 24h change
-          const changeRatio = 1 - (priceChange.h24 / 100);
-          estimatedPrice = currentPrice * Math.pow(changeRatio, minutesAgo / 1440);
+          estimatedPrice = calculatePrice(priceChange.h24, minutesAgo / 1440);
         }
         
         // Add some realistic variation (±0.5% random walk)

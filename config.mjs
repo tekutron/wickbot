@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading
-  CUSTOM_TOKEN_ADDRESS: 'GjAVDGJs2gP4QzaKT9qvJ4Q47mjP9G2URsKcDAMPpump',
-  CUSTOM_TOKEN_SYMBOL: 'CWIF',
+  CUSTOM_TOKEN_ADDRESS: '7usWgvKjHRrSi9dfzoCXaBXggnwbGmKcwE6pdJZtpump',
+  CUSTOM_TOKEN_SYMBOL: 'BUDI',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.207,   // Updated: 0.197 USDC wallet + 0.01 SOL wallet
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 40,        // 40% per trade (~$6, better fee efficiency for scalping)
+  POSITION_SIZE_PCT: 50,        // 40% per trade (~$6, better fee efficiency for scalping)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings
@@ -56,8 +56,8 @@ export const config = {
   EXIT_ON_OPPOSITE_SIGNAL: true,  // Sell when sell signal triggers (not fixed TP)
   EXIT_CONFIDENCE_MIN: 50,        // Min confidence for signal-driven exit (lowered for aggressive mode)
   
-  // Minimum movement filter (AGGRESSIVE - react to smaller moves)
-  MIN_CANDLE_BODY_PCT: 0.2,     // Skip if candle body < 0.2% (was 0.5%)
+  // Minimum movement filter (TESTING MODE - very sensitive)
+  MIN_CANDLE_BODY_PCT: 0.05,    // Skip if candle body < 0.05% (lowered for testing from 0.2%)
   
   // === LEGACY PATTERN MODE (Fallback) ===
   MIN_SIGNAL_SCORE: 65,         // Old pattern-based score threshold
