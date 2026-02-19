@@ -47,8 +47,8 @@ class WickBotFast {
     
     const balance = await this.positionManager.getBalance();
     console.log(`💰 Starting Capital: ${balance.sol.toFixed(4)} SOL (~$${balance.usd.toFixed(2)})`);
-    console.log(`📊 Trading Pair: ${config.PAIR}`);
-    console.log(`⚡ Strategy: FAST Real-Time Dip/Top Detection`);
+    console.log(`📊 Trading Pair: ${config.getTradingPair()}`);
+    console.log(`⚡ Strategy: ${config.isCustomTokenMode() ? 'Custom Token' : 'SOL/USDC'} - Real-Time Dip/Top Detection`);
     console.log(`📈 Update Frequency: Every ${config.POLL_INTERVAL_MS / 1000}s`);
     console.log(`🎯 Position Size: ${config.POSITION_SIZE_PCT}% (~${(balance.sol * config.POSITION_SIZE_PCT / 100).toFixed(4)} SOL)`);
     console.log(`🛡️  Safety Nets: +${config.SAFETY_TP_PCT}% / -${config.SAFETY_SL_PCT}%`);
@@ -82,9 +82,12 @@ class WickBotFast {
    */
   async initializeEngine() {
     try {
+      const targetToken = config.getTargetTokenAddress();
+      console.log(`   Fetching data for: ${config.isCustomTokenMode() ? config.CUSTOM_TOKEN_SYMBOL : 'SOL'}`);
+      
       // Fetch 100 1-minute candles for initialization
       const candles = await this.birdeyeAPI.fetchCandles(
-        config.TOKEN_ADDRESS_SOL,
+        targetToken,
         '1m',
         100
       );
@@ -118,9 +121,11 @@ class WickBotFast {
   
   async loop() {
     try {
+      const targetToken = config.getTargetTokenAddress();
+      
       // 1. Fetch latest 1-minute candle
       const candles = await this.birdeyeAPI.fetchCandles(
-        config.TOKEN_ADDRESS_SOL,
+        targetToken,
         '1m',
         1 // Only fetch latest candle for O(1) update
       );
@@ -162,12 +167,7 @@ class WickBotFast {
     
     console.log(`[${timestamp}]`);
     console.log(`Signal: ${signal.action.toUpperCase()} (Confidence: ${signal.confidence}%)`);
-    
-    if (signal.action !== 'hold') {
-      console.log(`💡 ${signal.reason}`);
-    } else {
-      console.log(`Reason: ${signal.reason}`);
-    }
+    console.log(`Reason: ${signal.reason}`);
     
     // Show key indicators
     if (signal.details.rsi) {
@@ -209,21 +209,39 @@ class WickBotFast {
     const positionSize = this.positionManager.getPositionSize();
     
     if (config.DRY_RUN) {
-      console.log(`   🧪 DRY-RUN: Would buy ${positionSize.toFixed(4)} SOL worth of USDC\n`);
+      const pair = config.getTradingPair();
+      console.log(`   🧪 DRY-RUN: Would buy ${positionSize.toFixed(4)} ${pair}\n`);
       return;
     }
     
     try {
-      // USDC-first mode: BUY = swap USDC → SOL
-      const usdcAmount = positionSize * 86; // Rough SOL price estimate
-      console.log(`   Position size: ${usdcAmount.toFixed(2)} USDC`);
+      let result;
       
-      const result = await this.jupiterSwap.swapUsdcToSol(signal, usdcAmount);
+      if (config.isCustomTokenMode()) {
+        // Custom token mode: SOL → TOKEN
+        const solAmount = positionSize;
+        const solLamports = Math.floor(solAmount * 1e9);
+        console.log(`   Position size: ${solAmount.toFixed(4)} SOL → ${config.CUSTOM_TOKEN_SYMBOL}`);
+        
+        result = await this.jupiterSwap.swap(
+          config.TOKEN_ADDRESS_SOL,
+          config.CUSTOM_TOKEN_ADDRESS,
+          solLamports,
+          9,  // SOL decimals
+          9,  // Most tokens use 9 decimals
+          'BUY'
+        );
+      } else {
+        // Default mode: USDC → SOL
+        const usdcAmount = positionSize * 86; // Rough SOL price estimate
+        console.log(`   Position size: ${usdcAmount.toFixed(2)} USDC`);
+        
+        result = await this.jupiterSwap.swapUsdcToSol(signal, usdcAmount);
+      }
       
       if (result.success) {
         this.positionManager.openPosition(result);
-        console.log(`   ✅ Position opened: ${result.amountOut.toFixed(4)} SOL`);
-        console.log(`   Entry price: $${result.price.toFixed(2)}/SOL`);
+        console.log(`   ✅ Position opened: ${result.amountOut}`);
         console.log(`   Signature: ${result.signature}\n`);
       } else {
         console.log(`   ❌ Trade failed: ${result.error}\n`);
@@ -271,8 +289,8 @@ class WickBotFast {
   
   async executeSell(position, currentPrice, reason) {
     console.log(`   Position: ${position.id}`);
-    console.log(`   Entry: $${position.entryPrice.toFixed(2)}/SOL`);
-    console.log(`   Exit: $${currentPrice.toFixed(2)}/SOL`);
+    console.log(`   Entry price: ${position.entryPrice}`);
+    console.log(`   Current price: ${currentPrice.toFixed(6)}`);
     
     if (config.DRY_RUN) {
       console.log(`   🧪 DRY-RUN: Would sell position\n`);
@@ -281,12 +299,31 @@ class WickBotFast {
     }
     
     try {
-      // USDC-first mode: SELL = swap SOL → USDC
-      const result = await this.jupiterSwap.swapSolToUsdc(position, position.amountSol);
+      let result;
+      
+      if (config.isCustomTokenMode()) {
+        // Custom token mode: TOKEN → SOL
+        // Position holds TOKEN, we sell it back to SOL
+        const tokenAmount = parseFloat(position.amountOut); // Amount of TOKEN we have
+        const tokenLamports = Math.floor(tokenAmount * 1e9);
+        console.log(`   Selling: ${tokenAmount.toFixed(4)} ${config.CUSTOM_TOKEN_SYMBOL} → SOL`);
+        
+        result = await this.jupiterSwap.swap(
+          config.CUSTOM_TOKEN_ADDRESS,
+          config.TOKEN_ADDRESS_SOL,
+          tokenLamports,
+          9,  // Token decimals
+          9,  // SOL decimals
+          'SELL'
+        );
+      } else {
+        // Default mode: SOL → USDC
+        result = await this.jupiterSwap.swapSolToUsdc(position, position.amountSol);
+      }
       
       if (result.success) {
-        this.positionManager.closePosition(position, result.price, result.signature, reason);
-        console.log(`   ✅ Position closed: ${result.amountOut.toFixed(2)} USDC`);
+        this.positionManager.closePosition(position, currentPrice, result.signature, reason);
+        console.log(`   ✅ Position closed: ${result.amountOut}`);
         console.log(`   Signature: ${result.signature}\n`);
       } else {
         console.log(`   ❌ Sell failed: ${result.error}\n`);

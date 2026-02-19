@@ -5,14 +5,21 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
+  // Custom Token Trading
+  CUSTOM_TOKEN_ADDRESS: 'GjAVDGJs2gP4QzaKT9qvJ4Q47mjP9G2URsKcDAMPpump',
+  CUSTOM_TOKEN_SYMBOL: 'CWIF',
+
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.18,   // 15.31 USDC ≈ 0.18 SOL @ $86/SOL
+  STARTING_CAPITAL_SOL: 0.207,   // Updated: 0.197 USDC wallet + 0.01 SOL wallet
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 40,        // 40% per trade (~$6, better fee efficiency for scalping)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
+  
+  // Transaction Settings
+  PRIORITY_FEE_LAMPORTS: 1000000,  // 0.001 SOL priority fee for faster execution
   
   // Signal-based exits (PRIMARY - signal-driven, not TP/SL)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
@@ -35,21 +42,22 @@ export const config = {
   // Update frequency
   UPDATE_INTERVAL_MS: 5000,     // Check every 5 seconds (was 20s, 4x faster)
   
-  // Signal confidence thresholds (algo-trade inspired)
-  MIN_BUY_CONFIDENCE: 67,       // Need 4/6 conditions (67% = 4 out of 6)
-  MIN_SELL_CONFIDENCE: 60,      // Need 3/5 conditions (60% = 3 out of 5)
+  // Signal confidence thresholds (AGGRESSIVE SCALPING MODE - 2026-02-18)
+  // Optimized for volatile low-cap tokens (CWIF, etc.)
+  MIN_BUY_CONFIDENCE: 50,       // Need 3/6 conditions (50% = 3 out of 6) - catches dips faster
+  MIN_SELL_CONFIDENCE: 50,      // Need 3/5 conditions (50% = 3 out of 5) - exits tops faster
   
-  // Dip/Top detection thresholds
-  RSI_DIP_THRESHOLD: 35,        // Lower RSI = deeper dip
-  RSI_TOP_THRESHOLD: 65,        // Higher RSI = clear top
+  // Dip/Top detection thresholds (AGGRESSIVE - catches moves earlier)
+  RSI_DIP_THRESHOLD: 45,        // Higher = catch dips before extreme oversold
+  RSI_TOP_THRESHOLD: 55,        // Lower = catch tops before extreme overbought
   BB_TOUCH_TOLERANCE: 0.001,    // 0.1% tolerance for "touching" bands
   
   // Exit strategy
   EXIT_ON_OPPOSITE_SIGNAL: true,  // Sell when sell signal triggers (not fixed TP)
-  EXIT_CONFIDENCE_MIN: 60,        // Min confidence for signal-driven exit
+  EXIT_CONFIDENCE_MIN: 50,        // Min confidence for signal-driven exit (lowered for aggressive mode)
   
-  // Minimum movement filter (avoid flat markets)
-  MIN_CANDLE_BODY_PCT: 0.5,     // Skip if candle body < 0.5%
+  // Minimum movement filter (AGGRESSIVE - react to smaller moves)
+  MIN_CANDLE_BODY_PCT: 0.2,     // Skip if candle body < 0.2% (was 0.5%)
   
   // === LEGACY PATTERN MODE (Fallback) ===
   MIN_SIGNAL_SCORE: 65,         // Old pattern-based score threshold
@@ -77,7 +85,6 @@ export const config = {
   DASHBOARD_HOST: 'localhost',
   
   // Testing
-  DRY_RUN: true,                // DRY RUN: Log trades without executing
   
   // Logging
   LOG_LEVEL: 'info',            // debug, info, warn, error
@@ -137,6 +144,34 @@ export const config = {
   
   // Testing
   DRY_RUN: process.env.DRY_RUN === 'true' || false,
+  
+  // Helper functions
+  isCustomTokenMode() {
+    return this.CUSTOM_TOKEN_ADDRESS && this.CUSTOM_TOKEN_ADDRESS.length > 0;
+  },
+  
+  getTradingPair() {
+    if (this.isCustomTokenMode()) {
+      return `${this.CUSTOM_TOKEN_SYMBOL || 'TOKEN'}/SOL`;
+    }
+    return this.PAIR; // Default: SOL/USDC
+  },
+  
+  getTargetTokenAddress() {
+    // Returns the token we want to buy
+    if (this.isCustomTokenMode()) {
+      return this.CUSTOM_TOKEN_ADDRESS;
+    }
+    return this.TOKEN_ADDRESS_USDC; // Default: buy USDC with SOL
+  },
+  
+  getBaseTokenAddress() {
+    // Returns the token we hold between trades
+    if (this.isCustomTokenMode()) {
+      return this.TOKEN_ADDRESS_SOL; // Hold SOL for custom tokens
+    }
+    return this.TOKEN_ADDRESS_USDC; // Hold USDC for SOL/USDC trading
+  },
 };
 
 export default config;

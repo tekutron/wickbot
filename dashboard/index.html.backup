@@ -381,6 +381,16 @@
         </div>
         
         <div class="card" style="margin-top: 20px;">
+          <h2>🎯 Signal</h2>
+          <div class="signal-display">
+            <div class="signal-action hold" id="signalAction">HOLD</div>
+            <div class="signal-score" id="signalScore">Score: 0/100</div>
+            <div style="margin-top: 15px; font-size: 0.9em; color: #888;" id="signalReason">Waiting for data...</div>
+            <div style="margin-top: 10px; font-size: 0.85em; color: #666;" id="signalBreakdown"></div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2>💎 Position</h2>
             <button class="btn-danger" id="closePositionBtn" onclick="closePosition()" style="display: none;">✕ Close</button>
@@ -413,108 +423,27 @@
         
         <div class="card" style="margin-top: 20px;">
           <h2>⚙️ Strategy</h2>
-          
-          <!-- Position Size Slider -->
-          <div style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div class="stat-grid" style="margin-bottom: 20px;">
+            <div class="stat-box">
               <div class="stat-label">Position Size</div>
-              <div class="stat-value" id="positionPctDisplay" style="font-size: 1.5em;">40%</div>
+              <div class="stat-value" style="font-size: 1.3em;">30%</div>
             </div>
-            
-            <input 
-              type="range" 
-              id="positionSlider" 
-              min="10" 
-              max="100" 
-              value="40" 
-              step="5"
-              oninput="updatePositionDisplay()"
-              style="width: 100%; height: 8px; background: linear-gradient(90deg, #4ade80 0%, #ef4444 100%); border-radius: 4px; outline: none; cursor: pointer;"
-            >
-            
-            <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #888; margin-top: 5px;">
-              <span>10%</span>
-              <span>50%</span>
-              <span>100%</span>
+            <div class="stat-box">
+              <div class="stat-label">Signal Min</div>
+              <div class="stat-value" style="font-size: 1.3em;">75/100</div>
             </div>
           </div>
-          
-          <!-- Calculated Position Size Display -->
-          <div id="calculatedPosition" style="display: none; padding: 15px; background: rgba(74, 222, 128, 0.1); border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #4ade80;">
-            <div style="font-size: 0.9em; color: #888; margin-bottom: 8px;">New Position Size:</div>
-            <div style="font-size: 1.4em; font-weight: 600;">
-              <span id="positionSolAmount">0.00</span> SOL / <span id="positionUsdcAmount">0.00</span> USDC
+          <div class="stat-grid" style="margin-bottom: 20px;">
+            <div class="stat-box">
+              <div class="stat-label">Take Profit</div>
+              <div class="stat-value" style="font-size: 1.3em; color: #4ade80;">+20%</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Stop Loss</div>
+              <div class="stat-value" style="font-size: 1.3em; color: #ef4444;">-15%</div>
             </div>
           </div>
-          
-          <!-- Apply Button -->
-          <button 
-            class="btn-start" 
-            onclick="applyPositionSize()" 
-            style="width: 100%; margin-bottom: 15px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"
-          >
-            📊 Apply Position Size
-          </button>
-          
-          <!-- Emergency Close -->
           <button class="btn-danger" onclick="emergencySell()" style="width: 100%;">🚨 Emergency Close All</button>
-        </div>
-        
-        <!-- Token Configuration Card -->
-        <div class="card" style="margin-top: 20px;">
-          <h2>🪙 Token Configuration</h2>
-          
-          <!-- Current Trading Pair -->
-          <div style="padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #3b82f6;">
-            <div style="font-size: 0.9em; color: #888; margin-bottom: 8px;">Currently Trading:</div>
-            <div style="font-size: 1.4em; font-weight: 600;" id="currentPair">
-              SOL/USDC
-            </div>
-            <div style="font-size: 0.8em; color: #888; margin-top: 5px;" id="tokenAddress">
-              Default pair (SOL ⇄ USDC)
-            </div>
-          </div>
-          
-          <!-- Token Address Input -->
-          <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-size: 0.9em; color: #888;">
-              Token Contract Address:
-            </label>
-            <input 
-              type="text" 
-              id="tokenAddressInput" 
-              placeholder="Paste Solana token address (e.g., FARTCOIN)"
-              style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #e0e0e0; font-family: monospace; font-size: 0.9em;"
-            >
-            <div style="font-size: 0.75em; color: #888; margin-top: 5px;">
-              Leave empty to trade SOL/USDC (default)
-            </div>
-          </div>
-          
-          <!-- Token Info Display (shown after validation) -->
-          <div id="tokenInfo" style="display: none; padding: 15px; background: rgba(74, 222, 128, 0.1); border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #4ade80;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #888;">Symbol:</span>
-              <span style="font-weight: 600;" id="tokenSymbol">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #888;">Name:</span>
-              <span style="font-weight: 600;" id="tokenName">-</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #888;">Strategy:</span>
-              <span style="font-weight: 600;">Hold SOL → Buy TOKEN → Sell to SOL</span>
-            </div>
-          </div>
-          
-          <!-- Apply Token Button -->
-          <button 
-            class="btn-start" 
-            onclick="applyToken()" 
-            style="width: 100%; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"
-          >
-            🪙 Apply Token
-          </button>
         </div>
         
         <div class="card" style="margin-top: 20px;">
@@ -560,7 +489,7 @@
     
     // Connect to WebSocket
     function connectWebSocket() {
-      ws = new WebSocket(`ws://${window.location.host}`);
+      ws = new WebSocket('ws://localhost:3000');
       
       ws.onopen = () => {
         console.log('Connected to wickbot');
@@ -645,7 +574,17 @@
     }
     
     function updateSignal() {
-      // Signal section removed - signal feed shows live updates instead
+      const signal = botState.signal;
+      if (!signal) return;
+      
+      const actionEl = document.getElementById('signalAction');
+      const scoreEl = document.getElementById('signalScore');
+      const reasonEl = document.getElementById('signalReason');
+      
+      actionEl.textContent = signal.action.toUpperCase();
+      actionEl.className = `signal-action ${signal.action}`;
+      scoreEl.textContent = `Score: ${signal.score}/100`;
+      reasonEl.textContent = signal.reason || '';
     }
     
     function updatePosition() {
@@ -779,129 +718,9 @@
       alert('Settings saved!\n(This feature is coming soon)');
     }
     
-    // Position Size Functions
-    function updatePositionDisplay() {
-      const slider = document.getElementById('positionSlider');
-      const display = document.getElementById('positionPctDisplay');
-      display.textContent = slider.value + '%';
-    }
-    
-    async function applyPositionSize() {
-      const slider = document.getElementById('positionSlider');
-      const percentage = parseInt(slider.value);
-      
-      // Get current capital (use USDC wallet as primary)
-      const usdcBalance = botState.wallets.usdc.usdc || 0;
-      const solBalance = botState.wallets.sol.sol || 0;
-      
-      // Calculate position sizes
-      const positionUsdc = (usdcBalance * percentage / 100).toFixed(2);
-      const positionSol = (solBalance * percentage / 100).toFixed(4);
-      
-      // Show calculated amounts
-      document.getElementById('positionSolAmount').textContent = positionSol;
-      document.getElementById('positionUsdcAmount').textContent = positionUsdc;
-      document.getElementById('calculatedPosition').style.display = 'block';
-      
-      // Update config via API
-      try {
-        const response = await fetch('/api/update-position-size', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ percentage })
-        });
-        
-        if (response.ok) {
-          console.log('Position size updated to ' + percentage + '%');
-        } else {
-          console.error('Failed to update position size');
-        }
-      } catch (error) {
-        console.error('Error updating position size:', error);
-      }
-    }
-    
     function emergencySell() {
       if (!confirm('⚠️ Close ALL positions immediately?')) return;
       alert('Emergency sell executed!\n(This feature is coming soon)');
-    }
-    
-    // Token Configuration Functions
-    async function applyToken() {
-      const input = document.getElementById('tokenAddressInput');
-      const address = input.value.trim();
-      
-      // If empty, reset to SOL/USDC
-      if (!address) {
-        if (!confirm('Reset to default SOL/USDC trading?')) return;
-        
-        try {
-          const response = await fetch('/api/update-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tokenAddress: null, symbol: 'SOL/USDC' })
-          });
-          
-          if (response.ok) {
-            document.getElementById('currentPair').textContent = 'SOL/USDC';
-            document.getElementById('tokenAddress').textContent = 'Default pair (SOL ⇄ USDC)';
-            document.getElementById('tokenInfo').style.display = 'none';
-            alert('✅ Switched to SOL/USDC trading');
-          }
-        } catch (error) {
-          alert('❌ Failed to update token: ' + error.message);
-        }
-        return;
-      }
-      
-      // Validate token address format (Solana addresses are base58, 32-44 chars)
-      if (address.length < 32 || address.length > 44) {
-        alert('❌ Invalid Solana address format');
-        return;
-      }
-      
-      // Fetch token metadata
-      try {
-        document.getElementById('tokenInfo').style.display = 'block';
-        document.getElementById('tokenSymbol').textContent = 'Loading...';
-        document.getElementById('tokenName').textContent = 'Loading...';
-        
-        const response = await fetch('/api/validate-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tokenAddress: address })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.message || 'Token validation failed');
-        }
-        
-        // Show token info
-        document.getElementById('tokenSymbol').textContent = data.symbol || 'Unknown';
-        document.getElementById('tokenName').textContent = data.name || 'Unknown Token';
-        
-        // Update config
-        const updateResponse = await fetch('/api/update-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            tokenAddress: address, 
-            symbol: data.symbol,
-            name: data.name
-          })
-        });
-        
-        if (updateResponse.ok) {
-          document.getElementById('currentPair').textContent = `${data.symbol}/SOL`;
-          document.getElementById('tokenAddress').textContent = address;
-          alert(`✅ Now trading ${data.symbol}/SOL\n\nStrategy: Hold SOL → Buy ${data.symbol} → Sell to SOL`);
-        }
-      } catch (error) {
-        document.getElementById('tokenInfo').style.display = 'none';
-        alert('❌ Failed to validate token: ' + error.message);
-      }
     }
     
     // Initialize
@@ -993,13 +812,51 @@
     function switchChartTimeframe() {}
     function loadChartData() {}
     function updatePatternMarkers(patterns) {}
+      
+      const parts = [];
+      if (bullish.length > 0) {
+        parts.push(`<span style="color: #4ade80;">🔼 ${bullish.map(p => p.name).join(', ')}</span>`);
+      }
+      if (bearish.length > 0) {
+        parts.push(`<span style="color: #ef4444;">🔽 ${bearish.map(p => p.name).join(', ')}</span>`);
+      }
+      
+      patternList.innerHTML = parts.join(' | ');
+    }
     
     // ==========================
     // ENHANCED UPDATE FUNCTIONS
     // ==========================
     
     function updateSignal() {
-      // Signal section removed - signal feed shows live updates instead
+      const signal = botState.signal;
+      if (!signal) return;
+      
+      const actionEl = document.getElementById('signalAction');
+      const scoreEl = document.getElementById('signalScore');
+      const reasonEl = document.getElementById('signalReason');
+      const breakdownEl = document.getElementById('signalBreakdown');
+      
+      actionEl.textContent = signal.action.toUpperCase();
+      actionEl.className = `signal-action ${signal.action}`;
+      scoreEl.textContent = `Score: ${signal.score}/100`;
+      reasonEl.textContent = signal.reason || 'No reason provided';
+      
+      // Show breakdown if available
+      if (signal.breakdown) {
+        const b = signal.breakdown;
+        breakdownEl.textContent = `Patterns: ${b.patternScore}/100 | Indicators: ${b.indicatorScore}/100 | Bonus: +${b.multiTimeframeBonus}`;
+      }
+      
+      // Update pattern markers
+      if (signal.patterns) {
+        // For now, create fake pattern objects (you'll need real data from server)
+        const patternObjs = signal.patterns.map(name => ({
+          name,
+          type: signal.action === 'buy' ? 'bullish' : signal.action === 'sell' ? 'bearish' : 'neutral'
+        }));
+        updatePatternMarkers(patternObjs);
+      }
     }
     
     function updatePosition() {

@@ -61,8 +61,9 @@ export class FastSignalGenerator {
     const buyScore = Object.values(buyConditions).filter(Boolean).length;
     const buyConfidence = (buyScore / Object.keys(buyConditions).length) * 100;
     
-    // Strong buy signal: Need at least 4/6 conditions
-    if (buyScore >= 4 && buyConfidence >= config.MIN_BUY_CONFIDENCE) {
+    // BUY signal: Check if confidence meets threshold (dynamically configured)
+    const minBuyConditions = Math.ceil((Object.keys(buyConditions).length * config.MIN_BUY_CONFIDENCE) / 100);
+    if (buyScore >= minBuyConditions && buyConfidence >= config.MIN_BUY_CONFIDENCE) {
       const reasons = Object.keys(buyConditions)
         .filter(k => buyConditions[k])
         .map(k => this.formatCondition(k));
@@ -103,8 +104,9 @@ export class FastSignalGenerator {
     const sellScore = Object.values(sellConditions).filter(Boolean).length;
     const sellConfidence = (sellScore / Object.keys(sellConditions).length) * 100;
     
-    // Strong sell signal: Need at least 3/5 conditions
-    if (sellScore >= 3 && sellConfidence >= config.MIN_SELL_CONFIDENCE) {
+    // SELL signal: Check if confidence meets threshold (dynamically configured)
+    const minSellConditions = Math.ceil((Object.keys(sellConditions).length * config.MIN_SELL_CONFIDENCE) / 100);
+    if (sellScore >= minSellConditions && sellConfidence >= config.MIN_SELL_CONFIDENCE) {
       const reasons = Object.keys(sellConditions)
         .filter(k => sellConditions[k])
         .map(k => this.formatCondition(k));

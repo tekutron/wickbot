@@ -50,7 +50,8 @@ export class JupiterSwap {
         inputMint: config.TOKEN_ADDRESS_SOL,
         outputMint: config.TOKEN_ADDRESS_USDC,
         amount: amountLamports.toString(),
-        taker: this.wallet.publicKey.toBase58()
+        taker: this.wallet.publicKey.toBase58(),
+        priorityFee: config.PRIORITY_FEE_LAMPORTS.toString()
       });
       
       console.log(`   📊 Getting quote from Jupiter...`);
@@ -145,7 +146,8 @@ export class JupiterSwap {
         inputMint: config.TOKEN_ADDRESS_USDC,
         outputMint: config.TOKEN_ADDRESS_SOL,
         amount: amountMicroUsdc.toString(),
-        taker: this.wallet.publicKey.toBase58()
+        taker: this.wallet.publicKey.toBase58(),
+        priorityFee: config.PRIORITY_FEE_LAMPORTS.toString()
       });
       
       console.log(`   📊 Getting quote from Jupiter...`);
@@ -249,6 +251,115 @@ export class JupiterSwap {
     } catch (err) {
       console.error(`Failed to get SOL price: ${err.message}`);
       return 200; // Fallback estimate
+    }
+  }
+  
+  /**
+   * Generic swap function for any token pair
+   * @param {string} inputMint - Input token address
+   * @param {string} outputMint - Output token address
+   * @param {number} amountIn - Amount to swap (in token's base units, e.g., lamports for SOL)
+   * @param {number} inputDecimals - Decimals for input token (9 for SOL, 6 for USDC)
+   * @param {number} outputDecimals - Decimals for output token
+   * @param {string} direction - 'BUY' or 'SELL' for logging
+   */
+  async swap(inputMint, outputMint, amountIn, inputDecimals = 9, outputDecimals = 9, direction = 'SWAP') {
+    const displayAmount = (amountIn / Math.pow(10, inputDecimals)).toFixed(inputDecimals === 9 ? 4 : 2);
+    
+    console.log(`\n💱 ${direction}: ${displayAmount} tokens...`);
+    
+    try {
+      // Step 1: Get order
+      const params = new URLSearchParams({
+        inputMint: inputMint,
+        outputMint: outputMint,
+        amount: amountIn.toString(),
+        taker: this.wallet.publicKey.toBase58(),
+        priorityFee: config.PRIORITY_FEE_LAMPORTS.toString()
+      });
+      
+      console.log(`   📊 Getting quote from Jupiter...`);
+      const orderResponse = await fetch(`${this.jupiterBaseUrl}/order?${params}`, {
+        headers: this.jupiterApiKey ? {
+          'X-API-KEY': this.jupiterApiKey,
+          'Content-Type': 'application/json'
+        } : { 'Content-Type': 'application/json' }
+      });
+      
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        throw new Error(`Jupiter order failed: ${orderResponse.status} - ${errorText}`);
+      }
+      
+      const order = await orderResponse.json();
+      
+      if (order.errorCode) {
+        throw new Error(order.errorMessage || 'Unknown Jupiter error');
+      }
+      
+      const amountOut = parseInt(order.outAmount);
+      const displayAmountOut = (amountOut / Math.pow(10, outputDecimals)).toFixed(outputDecimals === 9 ? 4 : 2);
+      
+      console.log(`   ✅ Quote: ${displayAmountOut} tokens out`);
+      
+      if (config.DRY_RUN) {
+        console.log(`   🧪 DRY RUN - Skipping execution`);
+        return {
+          success: true,
+          signature: 'DRY_RUN',
+          amountIn: displayAmount,
+          amountOut: displayAmountOut,
+          dryRun: true
+        };
+      }
+      
+      // Step 2: Sign transaction
+      console.log(`   🔏 Signing transaction...`);
+      const tx = VersionedTransaction.deserialize(Buffer.from(order.transaction, 'base64'));
+      tx.sign([this.wallet]);
+      const signedTx = Buffer.from(tx.serialize()).toString('base64');
+      
+      // Step 3: Execute
+      console.log(`   📤 Submitting to Jupiter...`);
+      const executeResponse = await fetch(`${this.jupiterBaseUrl}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.jupiterApiKey ? { 'X-API-KEY': this.jupiterApiKey } : {})
+        },
+        body: JSON.stringify({
+          signedTransaction: signedTx,
+          requestId: order.requestId
+        })
+      });
+      
+      if (!executeResponse.ok) {
+        const errorText = await executeResponse.text();
+        throw new Error(`Jupiter execute failed: ${executeResponse.status} - ${errorText}`);
+      }
+      
+      const result = await executeResponse.json();
+      
+      if (result.status !== 'Success') {
+        throw new Error(result.error || 'Swap execution failed');
+      }
+      
+      console.log(`   ✅ Swap complete: ${result.signature}`);
+      
+      return {
+        success: true,
+        signature: result.signature,
+        amountIn: displayAmount,
+        amountOut: displayAmountOut,
+        source: 'jupiter'
+      };
+      
+    } catch (err) {
+      console.error(`   ❌ Swap failed: ${err.message}`);
+      return {
+        success: false,
+        error: err.message
+      };
     }
   }
 }

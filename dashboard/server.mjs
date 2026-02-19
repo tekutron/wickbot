@@ -11,6 +11,7 @@ import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fetch from 'node-fetch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.DASHBOARD_PORT || 3000;
@@ -66,10 +67,61 @@ const server = createServer((req, res) => {
     return;
   }
   
+  if (url === '/api/update-position-size' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { percentage } = JSON.parse(body);
+        updatePositionSizeInConfig(percentage);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: `Position size updated to ${percentage}%` }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: error.message }));
+      }
+    });
+    return;
+  }
+  
   if (url.startsWith('/api/close-position') && method === 'POST') {
     // TODO: Implement manual position close
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: 'Position closed' }));
+    return;
+  }
+  
+  if (url === '/api/validate-token' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { tokenAddress } = JSON.parse(body);
+        const tokenInfo = await validateToken(tokenAddress);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(tokenInfo));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: error.message }));
+      }
+    });
+    return;
+  }
+  
+  if (url === '/api/update-token' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { tokenAddress, symbol, name } = JSON.parse(body);
+        updateTokenInConfig(tokenAddress, symbol, name);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: `Token updated to ${symbol || 'SOL/USDC'}` }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: error.message }));
+      }
+    });
     return;
   }
   
@@ -179,6 +231,120 @@ function stopBot() {
   botProcess = null;
   botState.running = false;
   broadcast({ type: 'status', data: { running: false } });
+}
+
+function updatePositionSizeInConfig(percentage) {
+  const configPath = path.join(__dirname, '../config.mjs');
+  
+  try {
+    let configContent = fs.readFileSync(configPath, 'utf8');
+    
+    // Update POSITION_SIZE_PCT
+    configContent = configContent.replace(
+      /POSITION_SIZE_PCT:\s*\d+/,
+      `POSITION_SIZE_PCT: ${percentage}`
+    );
+    
+    fs.writeFileSync(configPath, configContent, 'utf8');
+    console.log(`✅ Position size updated to ${percentage}% in config.mjs`);
+    
+    // Broadcast update to all connected clients
+    broadcast({ 
+      type: 'config-update', 
+      data: { positionSizePct: percentage } 
+    });
+  } catch (error) {
+    console.error('❌ Failed to update config:', error);
+    throw error;
+  }
+}
+
+async function validateToken(tokenAddress) {
+  // Validate token using DexScreener API
+  try {
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+    
+    if (!response.ok) {
+      throw new Error('Token not found on DexScreener');
+    }
+    
+    const data = await response.json();
+    
+    if (!data.pairs || data.pairs.length === 0) {
+      throw new Error('No trading pairs found for this token');
+    }
+    
+    // Get the most liquid pair
+    const mainPair = data.pairs.sort((a, b) => 
+      parseFloat(b.liquidity?.usd || 0) - parseFloat(a.liquidity?.usd || 0)
+    )[0];
+    
+    return {
+      symbol: mainPair.baseToken.symbol.trim(),
+      name: mainPair.baseToken.name.trim(),
+      decimals: 9, // Standard SPL token decimals
+      priceUsd: mainPair.priceUsd,
+      liquidity: mainPair.liquidity?.usd,
+      valid: true
+    };
+  } catch (error) {
+    throw new Error('Token validation failed: ' + error.message);
+  }
+}
+
+function updateTokenInConfig(tokenAddress, symbol, name) {
+  const configPath = path.join(__dirname, '../config.mjs');
+  
+  try {
+    let configContent = fs.readFileSync(configPath, 'utf8');
+    
+    if (!tokenAddress) {
+      // Reset to default SOL/USDC
+      configContent = configContent.replace(
+        /CUSTOM_TOKEN_ADDRESS:\s*'[^']*'/,
+        "CUSTOM_TOKEN_ADDRESS: ''"
+      );
+      configContent = configContent.replace(
+        /CUSTOM_TOKEN_SYMBOL:\s*'[^']*'/,
+        "CUSTOM_TOKEN_SYMBOL: ''"
+      );
+    } else {
+      // Update to custom token
+      if (configContent.includes('CUSTOM_TOKEN_ADDRESS:')) {
+        configContent = configContent.replace(
+          /CUSTOM_TOKEN_ADDRESS:\s*'[^']*'/,
+          `CUSTOM_TOKEN_ADDRESS: '${tokenAddress}'`
+        );
+        configContent = configContent.replace(
+          /CUSTOM_TOKEN_SYMBOL:\s*'[^']*'/,
+          `CUSTOM_TOKEN_SYMBOL: '${symbol}'`
+        );
+      } else {
+        // Add new fields if they don't exist
+        const insertPoint = configContent.indexOf('PAIR:');
+        const before = configContent.substring(0, insertPoint);
+        const after = configContent.substring(insertPoint);
+        configContent = before + 
+          `// Custom Token Trading\n  CUSTOM_TOKEN_ADDRESS: '${tokenAddress}',\n  CUSTOM_TOKEN_SYMBOL: '${symbol}',\n\n  ` + 
+          after;
+      }
+    }
+    
+    fs.writeFileSync(configPath, configContent, 'utf8');
+    console.log(`✅ Token updated: ${symbol || 'SOL/USDC'}`);
+    
+    // Broadcast update
+    broadcast({ 
+      type: 'config-update', 
+      data: { 
+        customToken: tokenAddress,
+        customSymbol: symbol
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Failed to update token:', error);
+    throw error;
+  }
 }
 
 function parseOutput(output) {
