@@ -390,8 +390,14 @@ class WickBotFast {
       
       if (result.success) {
         this.positionManager.closePosition(position, currentPrice, result.signature, reason);
+        
+        // CRITICAL: Refresh capital from blockchain after sell
+        await this.positionManager.updateCapitalFromChain();
+        const newBalance = this.positionManager.currentCapital;
+        
         console.log(`   ✅ Position closed: ${result.amountOut}`);
-        console.log(`   Signature: ${result.signature}\n`);
+        console.log(`   Signature: ${result.signature}`);
+        console.log(`   💰 New balance: ${newBalance.toFixed(6)} SOL\n`);
       } else {
         console.log(`   ❌ Sell failed: ${result.error}\n`);
       }
