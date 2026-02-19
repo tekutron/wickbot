@@ -262,30 +262,19 @@ function updatePositionSizeInConfig(percentage) {
 }
 
 async function validateToken(tokenAddress) {
+  // Validate token using DexScreener API
   try {
-    // Use the proper token validator (same as bot uses)
-    const tokenInfo = await tokenValidator.validateToken(tokenAddress);
+    const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
     
-    if (!tokenInfo.validated) {
-      throw new Error('Token validation failed');
+    if (!response.ok) {
+      throw new Error('Token not found on DexScreener');
     }
     
-    return {
-      symbol: tokenInfo.marketData?.symbol || 'Unknown',
-      name: tokenInfo.marketData?.symbol || 'Unknown',
-      decimals: tokenInfo.decimals,
-      priceUsd: tokenInfo.marketData?.price || 0,
-      liquidity: tokenInfo.marketData?.liquidity || 0,
-      volume24h: tokenInfo.marketData?.volume24h || 0,
-      jupiterSupported: tokenInfo.jupiterSupported,
-      isToken2022: tokenInfo.isToken2022,
-      valid: true,
-      validated: true
-    };
-  } catch (error) {
-    throw new Error('Token validation failed: ' + error.message);
-  }
-}
+    const data = await response.json();
+    
+    if (!data.pairs || data.pairs.length === 0) {
+      throw new Error('No trading pairs found for this token');
+    }
     
     // Get the most liquid pair
     const mainPair = data.pairs.sort((a, b) => 
