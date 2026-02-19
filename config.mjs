@@ -18,16 +18,16 @@ export const config = {
   POSITION_SIZE_PCT: 50,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
-  // Transaction Settings
-  PRIORITY_FEE_LAMPORTS: 1000000,  // 0.001 SOL priority fee for faster execution
+  // Transaction Settings (2026-02-19 FEE OPTIMIZATION)
+  PRIORITY_FEE_LAMPORTS: 100000,  // 0.0001 SOL priority fee (90% reduction - still prioritized)
   
   // Signal-based exits (PRIMARY - signal-driven, not TP/SL)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
   SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
-  // MICRO-SCALP MODE (2026-02-19) - Based on trade analysis
-  QUICK_TP_1: 1.5,              // First profit target (take profit quickly)
-  QUICK_TP_2: 3.0,              // Second profit target (max target)
+  // MICRO-SCALP MODE (2026-02-19) - Based on trade analysis + FEE OPTIMIZATION
+  QUICK_TP_1: 2.0,              // First profit target (adjusted for fees - was 1.5%)
+  QUICK_TP_2: 4.0,              // Second profit target (adjusted for fees - was 3.0%)
   QUICK_SL: 2.0,                // Tight stop loss (cut losses fast)
   MAX_HOLD_TIME_SEC: 10,        // Force exit after 10 seconds (micro-scalp)
   
