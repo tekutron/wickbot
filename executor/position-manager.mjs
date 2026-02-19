@@ -76,19 +76,33 @@ export class PositionManager {
   }
   
   async updateCapitalFromChain() {
-    const balance = await this.getBalance();
-    
-    // For custom token trading (TOKEN/SOL), track SOL balance
-    // For SOL/USDC trading, track USDC balance
-    if (config.isCustomTokenMode()) {
-      // Custom token mode: Always track SOL (since we trade TOKEN/SOL)
-      this.currentCapital = balance.sol;
-    } else if (config.ACTIVE_WALLET === 'USDC') {
-      // SOL/USDC mode: Track USDC
-      this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent
-    } else {
-      // SOL wallet mode: Track SOL
-      this.currentCapital = balance.sol;
+    try {
+      const balance = await this.getBalance();
+      
+      // For custom token trading (TOKEN/SOL), track SOL balance
+      // For SOL/USDC trading, track USDC balance
+      if (config.isCustomTokenMode()) {
+        // Custom token mode: Always track SOL (since we trade TOKEN/SOL)
+        this.currentCapital = balance.sol;
+      } else if (config.ACTIVE_WALLET === 'USDC') {
+        // SOL/USDC mode: Track USDC
+        this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent
+      } else {
+        // SOL wallet mode: Track SOL
+        this.currentCapital = balance.sol;
+      }
+      
+      if (this.currentCapital === null || this.currentCapital === undefined || isNaN(this.currentCapital)) {
+        console.error('⚠️  WARNING: currentCapital is invalid:', this.currentCapital);
+        console.error('   Balance:', balance);
+        // Fallback: use SOL balance directly
+        this.currentCapital = balance.sol || this.startingCapital;
+      }
+      
+      this.saveState();
+    } catch (err) {
+      console.error('❌ updateCapitalFromChain failed:', err.message);
+      // Keep existing capital value on error
     }
   }
   
