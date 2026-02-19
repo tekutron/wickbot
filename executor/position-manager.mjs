@@ -103,7 +103,8 @@ export class PositionManager {
       amountSol: tradeResult.amountSol,
       amountUsdc: tradeResult.amountOut,
       signature: tradeResult.signature,
-      signal: tradeResult.signal
+      signal: tradeResult.signal,
+      side: 'long'  // All our trades are long positions (buy token, sell later)
     };
     
     this.positions.push(position);
