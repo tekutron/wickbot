@@ -14,6 +14,7 @@ import fetch from 'node-fetch';
 import { FastSignalGenerator } from './patterns/fast-signals.mjs';
 import { PositionManager } from './executor/position-manager.mjs';
 import { JupiterSwap } from './executor/jupiter-swap.mjs';
+import tokenValidator from './executor/token-validator.mjs';
 import fs from 'fs';
 
 class WickBotFast {
@@ -301,20 +302,27 @@ class WickBotFast {
         const solLamports = Math.floor(solAmount * 1e9);
         console.log(`   Position size: ${solAmount.toFixed(4)} SOL → ${config.CUSTOM_TOKEN_SYMBOL}`);
         
-        // Fetch token decimals from DexScreener
-        let tokenDecimals = 9; // Default
+        // VALIDATE TOKEN BEFORE TRADING (critical for multi-token support)
+        let tokenInfo;
         try {
-          const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${config.CUSTOM_TOKEN_ADDRESS}`);
-          if (dexResponse.ok) {
-            const dexData = await dexResponse.json();
-            if (dexData.pairs && dexData.pairs[0]) {
-              // DexScreener doesn't always have decimals, but tokens are usually 6 or 9
-              // We'll detect from the actual swap result
-              tokenDecimals = 6; // Most pump.fun tokens use 6
-            }
+          tokenInfo = await tokenValidator.validateToken(config.CUSTOM_TOKEN_ADDRESS);
+          
+          if (!tokenInfo.validated) {
+            throw new Error('Token validation failed');
           }
+          
+          if (!tokenInfo.jupiterSupported) {
+            console.log('   ⚠️  WARNING: Token may have low liquidity');
+          }
+          
+          console.log(`   ✅ Token: ${tokenInfo.marketData?.symbol || 'Unknown'}`);
+          console.log(`   ✅ Decimals: ${tokenInfo.decimals}`);
+          console.log(`   ✅ Program: ${tokenInfo.isToken2022 ? 'Token-2022' : 'Standard SPL'}`);
+          
         } catch (err) {
-          console.log(`   ⚠️  Could not fetch token decimals, using default: ${tokenDecimals}`);
+          console.error(`   ❌ Token validation failed: ${err.message}`);
+          console.error(`   ⚠️  SKIPPING BUY - Cannot trade unvalidated token`);
+          return;
         }
         
         result = await this.jupiterSwap.swap(
@@ -322,7 +330,7 @@ class WickBotFast {
           config.CUSTOM_TOKEN_ADDRESS,
           solLamports,
           9,  // SOL decimals
-          tokenDecimals,  // Detected token decimals
+          tokenInfo.decimals,  // Validated token decimals
           'BUY'
         );
         
