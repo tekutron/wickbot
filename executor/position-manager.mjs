@@ -102,7 +102,7 @@ export class PositionManager {
       entryPrice: tradeResult.price,
       amountSol: tradeResult.amountSol,
       amountUsdc: tradeResult.amountOut,  // Display amount (string)
-      amountToken: tradeResult.amountOut,  // Token amount for selling
+      amountTokenRaw: tradeResult.amountOutRaw,  // RAW base units (precise for selling)
       tokenDecimals: tradeResult.tokenDecimals || 9,  // Store decimals for sell
       signature: tradeResult.signature,
       signal: tradeResult.signal,

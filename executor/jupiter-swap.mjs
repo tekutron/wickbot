@@ -354,6 +354,7 @@ export class JupiterSwap {
         signature: result.signature,
         amountIn: displayAmount,
         amountOut: displayAmountOut,
+        amountOutRaw: amountOut,  // Store raw base units for precise selling
         price: price,
         source: 'jupiter'
       };

@@ -367,19 +367,19 @@ class WickBotFast {
       
       if (config.isCustomTokenMode()) {
         // Custom token mode: TOKEN → SOL
-        // Position holds TOKEN, we sell it back to SOL
-        const tokenAmount = parseFloat(position.amountToken || position.amountUsdc); // Amount of TOKEN we have
-        const tokenDecimals = position.tokenDecimals || 6; // Use stored decimals
-        const tokenBaseUnits = Math.floor(tokenAmount * Math.pow(10, tokenDecimals));
+        // Use RAW base units stored from buy (avoids rounding errors)
+        const tokenBaseUnits = position.amountTokenRaw || Math.floor(parseFloat(position.amountUsdc) * Math.pow(10, position.tokenDecimals));
+        const tokenDecimals = position.tokenDecimals || 6;
+        const tokenDisplay = tokenBaseUnits / Math.pow(10, tokenDecimals);
         
-        console.log(`   Selling: ${tokenAmount.toFixed(4)} ${config.CUSTOM_TOKEN_SYMBOL} → SOL`);
+        console.log(`   Selling: ${tokenDisplay.toFixed(4)} ${config.CUSTOM_TOKEN_SYMBOL} → SOL`);
         console.log(`   Token decimals: ${tokenDecimals}, Base units: ${tokenBaseUnits}`);
         
         result = await this.jupiterSwap.swap(
           config.CUSTOM_TOKEN_ADDRESS,
           config.TOKEN_ADDRESS_SOL,
           tokenBaseUnits,
-          tokenDecimals,  // Use stored decimals
+          tokenDecimals,
           9,  // SOL decimals
           'SELL'
         );
