@@ -20,9 +20,10 @@ const PORT = process.env.DASHBOARD_PORT || 3000;
 let botProcess = null;
 let botState = {
   running: false,
-  wallets: {
-    sol: { sol: 0, usdc: 0 },
-    usdc: { sol: 0, usdc: 0 }
+  wallet: {
+    address: '',
+    sol: 0,
+    usdc: 0
   },
   balance: { sol: 0, usdc: 0 }, // Legacy, kept for compatibility
   position: null,
@@ -424,7 +425,7 @@ function loadState() {
 // Fetch real-time balances from blockchain
 async function updateBalances() {
   return new Promise((resolve) => {
-    const balanceScript = spawn('node', [path.join(__dirname, 'get-both-balances.mjs')]);
+    const balanceScript = spawn('node', [path.join(__dirname, 'get-balance.mjs')]);
     let output = '';
     
     balanceScript.stdout.on('data', (data) => {
@@ -435,20 +436,19 @@ async function updateBalances() {
       if (code === 0 && output.trim()) {
         try {
           const data = JSON.parse(output.trim());
-          if (data.wallets) {
-            data.wallets.forEach(wallet => {
-              if (wallet.name === 'SOL') {
-                botState.wallets.sol = { sol: wallet.sol, usdc: wallet.usdc };
-              } else if (wallet.name === 'USDC') {
-                botState.wallets.usdc = { sol: wallet.sol, usdc: wallet.usdc };
-                // Set active wallet as default balance
-                botState.balance.sol = wallet.sol;
-                botState.balance.usdc = wallet.usdc;
-              }
-            });
+          if (data.address) {
+            // Single wallet mode
+            botState.wallet = {
+              address: data.address,
+              sol: data.sol || 0,
+              usdc: data.usdc || 0
+            };
+            // Update legacy balance for compatibility
+            botState.balance.sol = data.sol || 0;
+            botState.balance.usdc = data.usdc || 0;
           }
         } catch (err) {
-          console.error('Error parsing balances:', err.message);
+          console.error('Error parsing balance:', err.message);
         }
       }
       resolve();

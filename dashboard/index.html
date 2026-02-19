@@ -327,12 +327,12 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2>💰 Wallets</h2>
             <select id="walletSelector" onchange="switchWallet()" style="padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0;">
-              <option value="SOL">SOL Wallet</option>
-              <option value="USDC" selected>USDC Wallet (Active)</option>
+              <option value="SOL">Main Wallet</option>
+              <option value="USDC" selected>Main Wallet</option>
             </select>
           </div>
           
-          <!-- SOL Wallet -->
+          <!-- Main Wallet -->
           <div class="wallet-info" id="solWalletInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
             <div>
               <div class="wallet-balance" id="solWalletBalance">0.0000 SOL</div>
@@ -616,7 +616,7 @@
       
       // Update both wallets
       if (botState.wallets) {
-        // SOL Wallet
+        // Main Wallet
         const solWalletSol = (botState.wallets.sol?.sol || 0).toFixed(4);
         const solWalletUsdc = (botState.wallets.sol?.usdc || 0).toFixed(2);
         const solWalletTotal = ((botState.wallets.sol?.sol || 0) * 200 + (botState.wallets.sol?.usdc || 0)).toFixed(2);
