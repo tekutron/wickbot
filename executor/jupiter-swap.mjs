@@ -15,6 +15,31 @@ export class JupiterSwap {
     this.wallet = null;
     this.jupiterBaseUrl = 'https://lite-api.jup.ag/ultra/v1';
     this.jupiterApiKey = process.env.JUPITER_API_KEY || '';
+    this.solPriceUSD = 86;  // Cached SOL price, updated periodically
+    this.lastPriceUpdate = 0;
+  }
+  
+  /**
+   * Get current SOL price in USD (cached for 5 minutes)
+   */
+  async getSolPrice() {
+    const now = Date.now();
+    if (now - this.lastPriceUpdate < 300000) {  // 5 min cache
+      return this.solPriceUSD;
+    }
+    
+    try {
+      const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
+      const data = await response.json();
+      if (data.pairs && data.pairs.length > 0) {
+        this.solPriceUSD = parseFloat(data.pairs[0].priceUsd);
+        this.lastPriceUpdate = now;
+      }
+    } catch (err) {
+      console.log('   ⚠️  Using cached SOL price: $' + this.solPriceUSD);
+    }
+    
+    return this.solPriceUSD;
   }
   
   async initialize() {
@@ -346,8 +371,25 @@ export class JupiterSwap {
       
       console.log(`   ✅ Swap complete: ${result.signature}`);
       
-      // Calculate price (output per input)
-      const price = amountOut / amountIn;
+      // Calculate USD price per token
+      const solPrice = await this.getSolPrice();
+      let priceUSD;
+      
+      // Determine which token is SOL and calculate price correctly
+      if (inputMint === config.TOKEN_ADDRESS_SOL) {
+        // Buying tokens with SOL: price = (SOL spent × SOL price) / tokens received
+        const solSpent = parseFloat(displayAmount);
+        const tokensReceived = parseFloat(displayAmountOut);
+        priceUSD = (solSpent * solPrice) / tokensReceived;
+      } else if (outputMint === config.TOKEN_ADDRESS_SOL) {
+        // Selling tokens for SOL: price = (SOL received × SOL price) / tokens sold
+        const solReceived = parseFloat(displayAmountOut);
+        const tokensSold = parseFloat(displayAmount);
+        priceUSD = (solReceived * solPrice) / tokensSold;
+      } else {
+        // Neither is SOL, fallback to ratio (edge case)
+        priceUSD = amountOut / amountIn;
+      }
       
       return {
         success: true,
@@ -355,7 +397,7 @@ export class JupiterSwap {
         amountIn: displayAmount,
         amountOut: displayAmountOut,
         amountOutRaw: amountOut,  // Store raw base units for precise selling
-        price: price,
+        price: priceUSD,
         source: 'jupiter'
       };
       
