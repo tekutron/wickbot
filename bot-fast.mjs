@@ -286,6 +286,12 @@ class WickBotFast {
     console.log(`\n🎯 DIP DETECTED! (Confidence: ${signal.confidence}%)`);
     console.log(`   ${signal.reason}`);
     
+    // CRITICAL: Double-check MAX_POSITIONS (prevent race condition)
+    if (this.positionManager.positions.length >= config.MAX_POSITIONS) {
+      console.log(`   ⏸️  Already at MAX_POSITIONS (${this.positionManager.positions.length}/${config.MAX_POSITIONS}) - skipping entry\n`);
+      return;
+    }
+    
     // ENTRY CONFIRMATION (2026-02-19 MOMENTUM-BASED)
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
       // Use candle data from incremental engine
@@ -306,13 +312,18 @@ class WickBotFast {
         return;
       }
       
-      // 2. MOMENTUM CHECK - Must be positive
-      const momentum1m = signal.momentum1m || 0;
-      if (momentum1m <= 0) {
-        console.log(`   📉 1m momentum ${momentum1m.toFixed(2)}% - not bullish enough`);
+      // 2. MOMENTUM CHECK - Calculate from recent candles
+      // Use last 3 candles to determine momentum (current vs 2 candles ago)
+      const currentPrice = lastCandle.close;
+      const priceAgo = candles[candles.length - 3].close;
+      const momentum = ((currentPrice - priceAgo) / priceAgo) * 100;
+      
+      if (momentum <= config.MIN_MOMENTUM_1M) {
+        console.log(`   📉 Momentum ${momentum.toFixed(2)}% - not bullish (need >${config.MIN_MOMENTUM_1M}%)`);
         console.log(`   ⏸️  Waiting for positive momentum...\n`);
         return;
       }
+      console.log(`   ✅ Momentum confirmed: ${momentum.toFixed(2)}%`);
       
       // 3. VOLUME SPIKE - Confirm buying pressure
       if (signal.volume5m && signal.volume1hAvg) {
@@ -325,7 +336,7 @@ class WickBotFast {
         console.log(`   ✅ Volume confirmed: ${volumeRatio.toFixed(2)}x average`);
       }
       
-      console.log(`   ✅ Entry confirmed: ${momentum1m > 0 ? 'GREEN' : 'RED'} candle (${candleBody.toFixed(2)}%) + ${momentum1m.toFixed(2)}% momentum`);
+      console.log(`   ✅ Entry confirmed: ${candleBody >= 0 ? 'GREEN' : 'RED'} candle (${candleBody.toFixed(2)}%)`);
     }
     
     const positionSize = this.positionManager.getPositionSize();

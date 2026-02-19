@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
-  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
+  CUSTOM_TOKEN_ADDRESS: 'F5RyYFSXMuTXPjcLBTDr9ihy7ZUw93f1b3gLn1U1pump',
+  CUSTOM_TOKEN_SYMBOL: 'PUSH',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.088465,    // Updated after WAR losses: 0.088465 SOL (2026-02-19 10:49)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 55,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 25,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings (2026-02-19 FEE OPTIMIZATION)

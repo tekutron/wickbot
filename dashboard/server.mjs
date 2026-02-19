@@ -286,24 +286,6 @@ async function validateToken(tokenAddress) {
     throw new Error('Token validation failed: ' + error.message);
   }
 }
-    
-    // Get the most liquid pair
-    const mainPair = data.pairs.sort((a, b) => 
-      parseFloat(b.liquidity?.usd || 0) - parseFloat(a.liquidity?.usd || 0)
-    )[0];
-    
-    return {
-      symbol: mainPair.baseToken.symbol.trim(),
-      name: mainPair.baseToken.name.trim(),
-      decimals: 9, // Standard SPL token decimals
-      priceUsd: mainPair.priceUsd,
-      liquidity: mainPair.liquidity?.usd,
-      valid: true
-    };
-  } catch (error) {
-    throw new Error('Token validation failed: ' + error.message);
-  }
-}
 
 function updateTokenInConfig(tokenAddress, symbol, name) {
   const configPath = path.join(__dirname, '../config.mjs');
