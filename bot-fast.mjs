@@ -6,6 +6,7 @@
 
 import config from './config.mjs';
 import { BirdeyeAPI } from './data/birdeye-api.mjs';
+import { DexScreenerCandles } from './data/dexscreener-candles.mjs';
 import { IncrementalEngine } from './data/incremental-indicators.mjs';
 import { FastSignalGenerator } from './patterns/fast-signals.mjs';
 import { PositionManager } from './executor/position-manager.mjs';
@@ -15,6 +16,7 @@ import fs from 'fs';
 class WickBotFast {
   constructor() {
     this.birdeyeAPI = new BirdeyeAPI();
+    this.dexscreenerAPI = new DexScreenerCandles();
     this.incrementalEngine = new IncrementalEngine({
       rsiPeriod: 14,
       bbPeriod: 20,
@@ -30,6 +32,7 @@ class WickBotFast {
     this.isRunning = false;
     this.loopInterval = null;
     this.initialized = false;
+    this.priceAPI = null; // Will be set to 'birdeye' or 'dexscreener'
   }
   
   async start() {
@@ -85,15 +88,31 @@ class WickBotFast {
       const targetToken = config.getTargetTokenAddress();
       console.log(`   Fetching data for: ${config.isCustomTokenMode() ? config.CUSTOM_TOKEN_SYMBOL : 'SOL'}`);
       
-      // Fetch 100 1-minute candles for initialization
-      const candles = await this.birdeyeAPI.fetchCandles(
-        targetToken,
-        '1m',
-        100
-      );
+      let candles = null;
+      
+      // Try Birdeye first
+      console.log(`   🔄 Trying Birdeye API...`);
+      candles = await this.birdeyeAPI.fetchCandles(targetToken, '1m', 100);
+      
+      if (candles && candles.length > 0) {
+        console.log(`   ✅ Birdeye: ${candles.length} candles fetched`);
+        this.priceAPI = 'birdeye';
+      } else {
+        // Fallback to DexScreener
+        console.log(`   ⚠️  Birdeye failed, trying DexScreener (synthetic candles)...`);
+        candles = await this.dexscreenerAPI.fetchCandles(targetToken, '1m', 100);
+        
+        if (candles && candles.length > 0) {
+          console.log(`   ✅ DexScreener: ${candles.length} synthetic candles built`);
+          this.priceAPI = 'dexscreener';
+        } else {
+          console.error('   ❌ Both Birdeye and DexScreener failed');
+          process.exit(1);
+        }
+      }
       
       if (!candles || candles.length === 0) {
-        console.error('❌ Failed to fetch initialization candles');
+        console.error('❌ Failed to fetch initialization candles from any source');
         process.exit(1);
       }
       
@@ -123,15 +142,24 @@ class WickBotFast {
     try {
       const targetToken = config.getTargetTokenAddress();
       
-      // 1. Fetch latest 1-minute candle
-      const candles = await this.birdeyeAPI.fetchCandles(
-        targetToken,
-        '1m',
-        1 // Only fetch latest candle for O(1) update
-      );
+      // 1. Fetch latest 1-minute candle (use established API)
+      let candles = null;
+      
+      if (this.priceAPI === 'birdeye') {
+        candles = await this.birdeyeAPI.fetchCandles(targetToken, '1m', 1);
+        
+        // If Birdeye fails, fallback to DexScreener
+        if (!candles || candles.length === 0) {
+          console.warn('⚠️  Birdeye failed, switching to DexScreener');
+          this.priceAPI = 'dexscreener';
+          candles = await this.dexscreenerAPI.fetchCandles(targetToken, '1m', 1);
+        }
+      } else {
+        candles = await this.dexscreenerAPI.fetchCandles(targetToken, '1m', 1);
+      }
       
       if (!candles || candles.length === 0) {
-        console.warn('⚠️  No candle data received');
+        console.warn('⚠️  No candle data received from any source');
         return;
       }
       
