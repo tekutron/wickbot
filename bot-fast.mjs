@@ -8,6 +8,7 @@ import config from './config.mjs';
 import { BirdeyeAPI } from './data/birdeye-api.mjs';
 import { DexScreenerCandles } from './data/dexscreener-candles.mjs';
 import { IncrementalEngine } from './data/incremental-indicators.mjs';
+import fetch from 'node-fetch';
 import { FastSignalGenerator } from './patterns/fast-signals.mjs';
 import { PositionManager } from './executor/position-manager.mjs';
 import { JupiterSwap } from './executor/jupiter-swap.mjs';
@@ -251,14 +252,35 @@ class WickBotFast {
         const solLamports = Math.floor(solAmount * 1e9);
         console.log(`   Position size: ${solAmount.toFixed(4)} SOL → ${config.CUSTOM_TOKEN_SYMBOL}`);
         
+        // Fetch token decimals from DexScreener
+        let tokenDecimals = 9; // Default
+        try {
+          const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${config.CUSTOM_TOKEN_ADDRESS}`);
+          if (dexResponse.ok) {
+            const dexData = await dexResponse.json();
+            if (dexData.pairs && dexData.pairs[0]) {
+              // DexScreener doesn't always have decimals, but tokens are usually 6 or 9
+              // We'll detect from the actual swap result
+              tokenDecimals = 6; // Most pump.fun tokens use 6
+            }
+          }
+        } catch (err) {
+          console.log(`   ⚠️  Could not fetch token decimals, using default: ${tokenDecimals}`);
+        }
+        
         result = await this.jupiterSwap.swap(
           config.TOKEN_ADDRESS_SOL,
           config.CUSTOM_TOKEN_ADDRESS,
           solLamports,
           9,  // SOL decimals
-          9,  // Most tokens use 9 decimals
+          tokenDecimals,  // Detected token decimals
           'BUY'
         );
+        
+        // Store decimals for later sell
+        if (result.success) {
+          result.tokenDecimals = tokenDecimals;
+        }
       } else {
         // Default mode: USDC → SOL
         const usdcAmount = positionSize * 86; // Rough SOL price estimate
@@ -332,15 +354,18 @@ class WickBotFast {
       if (config.isCustomTokenMode()) {
         // Custom token mode: TOKEN → SOL
         // Position holds TOKEN, we sell it back to SOL
-        const tokenAmount = parseFloat(position.amountOut); // Amount of TOKEN we have
-        const tokenLamports = Math.floor(tokenAmount * 1e9);
+        const tokenAmount = parseFloat(position.amountToken || position.amountUsdc); // Amount of TOKEN we have
+        const tokenDecimals = position.tokenDecimals || 6; // Use stored decimals
+        const tokenBaseUnits = Math.floor(tokenAmount * Math.pow(10, tokenDecimals));
+        
         console.log(`   Selling: ${tokenAmount.toFixed(4)} ${config.CUSTOM_TOKEN_SYMBOL} → SOL`);
+        console.log(`   Token decimals: ${tokenDecimals}, Base units: ${tokenBaseUnits}`);
         
         result = await this.jupiterSwap.swap(
           config.CUSTOM_TOKEN_ADDRESS,
           config.TOKEN_ADDRESS_SOL,
-          tokenLamports,
-          9,  // Token decimals
+          tokenBaseUnits,
+          tokenDecimals,  // Use stored decimals
           9,  // SOL decimals
           'SELL'
         );

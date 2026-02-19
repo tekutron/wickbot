@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading
-  CUSTOM_TOKEN_ADDRESS: '7usWgvKjHRrSi9dfzoCXaBXggnwbGmKcwE6pdJZtpump',
-  CUSTOM_TOKEN_SYMBOL: 'BUDI',
+  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
+  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',

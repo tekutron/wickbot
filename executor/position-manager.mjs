@@ -101,7 +101,9 @@ export class PositionManager {
       entryTime: Date.now(),
       entryPrice: tradeResult.price,
       amountSol: tradeResult.amountSol,
-      amountUsdc: tradeResult.amountOut,
+      amountUsdc: tradeResult.amountOut,  // Display amount (string)
+      amountToken: tradeResult.amountOut,  // Token amount for selling
+      tokenDecimals: tradeResult.tokenDecimals || 9,  // Store decimals for sell
       signature: tradeResult.signature,
       signal: tradeResult.signal,
       side: 'long'  // All our trades are long positions (buy token, sell later)
