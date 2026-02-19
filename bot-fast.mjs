@@ -288,16 +288,18 @@ class WickBotFast {
     
     // ENTRY CONFIRMATION (2026-02-19 optimization)
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
-      // Use historicalCandles from data fetcher (not priceHistory)
-      if (!this.historicalCandles || this.historicalCandles.length < 5) {
-        console.log(`   ⚠️  Not enough candle history (${this.historicalCandles?.length || 0}) - skipping confirmation\n`);
+      // Use candle data from signal generator
+      const candles = this.signalGenerator?.candles || [];
+      
+      if (candles.length < 5) {
+        console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping confirmation\n`);
         return;
       }
       
       // 1. Check if price is far enough from recent high
-      const recentCandles = this.historicalCandles.slice(-5);
+      const recentCandles = candles.slice(-5);
       const recentHigh = Math.max(...recentCandles.map(c => c.high));
-      const currentPrice = this.historicalCandles[this.historicalCandles.length - 1].close;
+      const currentPrice = candles[candles.length - 1].close;
       const priceFromHigh = ((currentPrice - recentHigh) / recentHigh) * 100;
       
       if (priceFromHigh > -config.ENTRY_DIP_FROM_HIGH_PCT) {
