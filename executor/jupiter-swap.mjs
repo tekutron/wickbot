@@ -346,11 +346,15 @@ export class JupiterSwap {
       
       console.log(`   ✅ Swap complete: ${result.signature}`);
       
+      // Calculate price (output per input)
+      const price = amountOut / amountIn;
+      
       return {
         success: true,
         signature: result.signature,
         amountIn: displayAmount,
         amountOut: displayAmountOut,
+        price: price,
         source: 'jupiter'
       };
       

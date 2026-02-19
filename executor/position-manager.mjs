@@ -78,11 +78,16 @@ export class PositionManager {
   async updateCapitalFromChain() {
     const balance = await this.getBalance();
     
-    // For USDC-first strategy, track capital in USDC
-    // For SOL-first strategy, track capital in SOL
-    if (config.ACTIVE_WALLET === 'USDC') {
-      this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent for comparison
+    // For custom token trading (TOKEN/SOL), track SOL balance
+    // For SOL/USDC trading, track USDC balance
+    if (config.isCustomTokenMode()) {
+      // Custom token mode: Always track SOL (since we trade TOKEN/SOL)
+      this.currentCapital = balance.sol;
+    } else if (config.ACTIVE_WALLET === 'USDC') {
+      // SOL/USDC mode: Track USDC
+      this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent
     } else {
+      // SOL wallet mode: Track SOL
       this.currentCapital = balance.sol;
     }
   }
