@@ -20,16 +20,14 @@ export class PositionManager {
   }
   
   async initialize() {
-    // Load wallet based on ACTIVE_WALLET setting
-    const walletPath = config.ACTIVE_WALLET === 'USDC' 
-      ? config.USDC_WALLET_PATH 
-      : config.WALLET_PATH;
+    // Load main wallet (single wallet mode)
+    const walletPath = config.WALLET_PATH;
     
     if (!fs.existsSync(walletPath)) {
       throw new Error(`Wallet not found: ${walletPath}`);
     }
     
-    console.log(`💳 Using ${config.ACTIVE_WALLET} wallet: ${walletPath}`);
+    console.log(`💳 Using main wallet: ${walletPath}`);
     
     const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
     this.wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
