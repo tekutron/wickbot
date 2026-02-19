@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading
-  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
-  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
+  CUSTOM_TOKEN_ADDRESS: '8opvqaWysX1oYbXuTL8PHaoaTiXD69VFYAX4smPebonk',
+  CUSTOM_TOKEN_SYMBOL: 'WAR',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.207,   // Updated: 0.197 USDC wallet + 0.01 SOL wallet
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 50,        // 40% per trade (~$6, better fee efficiency for scalping)
+  POSITION_SIZE_PCT: 20,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings
