@@ -288,6 +288,65 @@ export class JupiterSwap {
   }
   
   /**
+   * Get quote for a swap (pre-flight check)
+   * @returns {Object} { price, amountOut, amountOutRaw } or { error }
+   */
+  async getQuote(inputMint, outputMint, amountIn, inputDecimals = 9, outputDecimals = 9) {
+    try {
+      const params = new URLSearchParams({
+        inputMint: inputMint,
+        outputMint: outputMint,
+        amount: amountIn.toString(),
+        taker: this.wallet.publicKey.toBase58(),
+        priorityFee: config.PRIORITY_FEE_LAMPORTS.toString()
+      });
+      
+      const orderResponse = await fetch(`${this.jupiterBaseUrl}/order?${params}`, {
+        headers: this.jupiterApiKey ? {
+          'X-API-KEY': this.jupiterApiKey,
+          'Content-Type': 'application/json'
+        } : { 'Content-Type': 'application/json' }
+      });
+      
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        return { error: `Quote failed: ${orderResponse.status} - ${errorText}` };
+      }
+      
+      const order = await orderResponse.json();
+      
+      if (order.errorCode) {
+        return { error: order.errorMessage || 'Unknown Jupiter error' };
+      }
+      
+      const amountOut = parseInt(order.outAmount);
+      const amountInRaw = amountIn / Math.pow(10, inputDecimals);
+      const amountOutRaw = amountOut / Math.pow(10, outputDecimals);
+      
+      // Calculate USD price
+      const solPrice = await this.getSolPrice();
+      let priceUSD;
+      
+      if (inputMint === config.TOKEN_ADDRESS_SOL) {
+        priceUSD = (amountInRaw * solPrice) / amountOutRaw;
+      } else if (outputMint === config.TOKEN_ADDRESS_SOL) {
+        priceUSD = (amountOutRaw * solPrice) / amountInRaw;
+      } else {
+        priceUSD = amountOutRaw / amountInRaw;
+      }
+      
+      return {
+        price: priceUSD,
+        amountOut: amountOut / Math.pow(10, outputDecimals),
+        amountOutRaw: amountOut
+      };
+      
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+  
+  /**
    * Generic swap function for any token pair
    * @param {string} inputMint - Input token address
    * @param {string} outputMint - Output token address
@@ -295,8 +354,9 @@ export class JupiterSwap {
    * @param {number} inputDecimals - Decimals for input token (9 for SOL, 6 for USDC)
    * @param {number} outputDecimals - Decimals for output token
    * @param {string} direction - 'BUY' or 'SELL' for logging
+   * @param {number} slippageBps - Max slippage in basis points (100 = 1%)
    */
-  async swap(inputMint, outputMint, amountIn, inputDecimals = 9, outputDecimals = 9, direction = 'SWAP') {
+  async swap(inputMint, outputMint, amountIn, inputDecimals = 9, outputDecimals = 9, direction = 'SWAP', slippageBps = null) {
     const displayAmount = (amountIn / Math.pow(10, inputDecimals)).toFixed(inputDecimals === 9 ? 4 : 2);
     
     console.log(`\n💱 ${direction}: ${displayAmount} tokens...`);
@@ -310,6 +370,12 @@ export class JupiterSwap {
         taker: this.wallet.publicKey.toBase58(),
         priorityFee: config.PRIORITY_FEE_LAMPORTS.toString()
       });
+      
+      // Add slippage protection if specified
+      if (slippageBps !== null) {
+        params.append('slippageBps', slippageBps.toString());
+        console.log(`   🛡️  Slippage protection: ${(slippageBps / 100).toFixed(1)}% max`);
+      }
       
       console.log(`   📊 Getting quote from Jupiter...`);
       const orderResponse = await fetch(`${this.jupiterBaseUrl}/order?${params}`, {

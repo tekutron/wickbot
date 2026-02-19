@@ -15,11 +15,24 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.088465,    // Updated after WAR losses: 0.088465 SOL (2026-02-19 10:49)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 50,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 55,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings (2026-02-19 FEE OPTIMIZATION)
   PRIORITY_FEE_LAMPORTS: 100000,  // 0.0001 SOL priority fee (90% reduction - still prioritized)
+  
+  // Slippage Protection (2026-02-19 ADAPTIVE SLIPPAGE)
+  SLIPPAGE_PROFIT_BPS: 200,       // 2% max slippage on profitable exits (protect gains)
+  SLIPPAGE_SMALL_LOSS_BPS: 300,   // 3% max slippage on small losses (try to minimize)
+  SLIPPAGE_BIG_LOSS_BPS: 1000,    // 10% max slippage on big losses (emergency exit)
+  SLIPPAGE_THRESHOLD_PCT: -5,     // Threshold for "big loss" vs "small loss"
+  
+  // Pre-Flight Price Check (2026-02-19 EXECUTION PROTECTION)
+  PRE_FLIGHT_CHECK: true,         // Verify Jupiter quote before executing
+  MAX_PRICE_DEVIATION_PCT: 2.0,   // Abort if Jupiter price >2% worse than expected
+  RETRY_ON_BAD_PRICE: true,       // Wait and retry if price too bad
+  MAX_EXECUTION_RETRIES: 3,       // Max attempts before giving up
+  RETRY_DELAY_MS: 2000,           // Wait 2s between retries
   
   // Signal-based exits (PRIMARY - signal-driven, not TP/SL)
   USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers

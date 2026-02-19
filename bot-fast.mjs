@@ -473,6 +473,22 @@ class WickBotFast {
     console.log(`   Entry price: ${position.entryPrice}`);
     console.log(`   Current price: ${currentPrice.toFixed(6)}`);
     
+    // Calculate current P&L for adaptive slippage
+    const currentPnL = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+    
+    // ADAPTIVE SLIPPAGE (2026-02-19)
+    let slippageBps;
+    if (currentPnL > 0) {
+      slippageBps = config.SLIPPAGE_PROFIT_BPS;  // 2% on wins (protect gains)
+      console.log(`   💰 Profit mode: ${(slippageBps / 100).toFixed(1)}% max slippage (protect gains)`);
+    } else if (currentPnL > config.SLIPPAGE_THRESHOLD_PCT) {
+      slippageBps = config.SLIPPAGE_SMALL_LOSS_BPS;  // 3% on small losses
+      console.log(`   ⚠️  Small loss mode: ${(slippageBps / 100).toFixed(1)}% max slippage (minimize loss)`);
+    } else {
+      slippageBps = config.SLIPPAGE_BIG_LOSS_BPS;  // 10% on big losses (emergency)
+      console.log(`   🚨 Emergency mode: ${(slippageBps / 100).toFixed(1)}% max slippage (exit at any price)`);
+    }
+    
     if (config.DRY_RUN) {
       console.log(`   🧪 DRY-RUN: Would sell position\n`);
       this.positionManager.closePosition(position, currentPrice, 'DRY_RUN_SIG', reason);
@@ -480,11 +496,11 @@ class WickBotFast {
     }
     
     try {
-      let result;
+      // Setup for custom token mode or default
+      let inputMint, outputMint, amountIn, inputDecimals, outputDecimals;
       
       if (config.isCustomTokenMode()) {
         // Custom token mode: TOKEN → SOL
-        // Use RAW base units stored from buy (avoids rounding errors)
         const tokenBaseUnits = position.amountTokenRaw || Math.floor(parseFloat(position.amountUsdc) * Math.pow(10, position.tokenDecimals));
         const tokenDecimals = position.tokenDecimals || 6;
         const tokenDisplay = tokenBaseUnits / Math.pow(10, tokenDecimals);
@@ -492,31 +508,112 @@ class WickBotFast {
         console.log(`   Selling: ${tokenDisplay.toFixed(4)} ${config.CUSTOM_TOKEN_SYMBOL} → SOL`);
         console.log(`   Token decimals: ${tokenDecimals}, Base units: ${tokenBaseUnits}`);
         
-        result = await this.jupiterSwap.swap(
-          config.CUSTOM_TOKEN_ADDRESS,
-          config.TOKEN_ADDRESS_SOL,
-          tokenBaseUnits,
-          tokenDecimals,
-          9,  // SOL decimals
-          'SELL'
-        );
+        inputMint = config.CUSTOM_TOKEN_ADDRESS;
+        outputMint = config.TOKEN_ADDRESS_SOL;
+        amountIn = tokenBaseUnits;
+        inputDecimals = tokenDecimals;
+        outputDecimals = 9;
       } else {
-        // Default mode: SOL → USDC
-        result = await this.jupiterSwap.swapSolToUsdc(position, position.amountSol);
+        // Default mode: USDC → SOL (not used in current config but keep for compatibility)
+        inputMint = config.TOKEN_ADDRESS_USDC;
+        outputMint = config.TOKEN_ADDRESS_SOL;
+        amountIn = Math.floor(position.amountUsdc * 1e6);
+        inputDecimals = 6;
+        outputDecimals = 9;
       }
       
-      if (result.success) {
+      // PRE-FLIGHT PRICE CHECK (2026-02-19 EXECUTION PROTECTION)
+      let attempts = 0;
+      let result = null;
+      
+      while (attempts < config.MAX_EXECUTION_RETRIES && !result) {
+        attempts++;
+        
+        if (config.PRE_FLIGHT_CHECK && attempts === 1) {
+          console.log(`\n   🔍 Pre-flight check: Getting Jupiter quote...`);
+          
+          const quote = await this.jupiterSwap.getQuote(
+            inputMint,
+            outputMint,
+            amountIn,
+            inputDecimals,
+            outputDecimals
+          );
+          
+          if (quote.error) {
+            console.log(`   ⚠️  Quote failed: ${quote.error}`);
+            // Continue anyway, but without pre-flight protection
+          } else {
+            const quotedPnL = ((quote.price - position.entryPrice) / position.entryPrice) * 100;
+            const pnlDeviation = Math.abs(quotedPnL - currentPnL);
+            
+            console.log(`   📊 Expected P&L: ${currentPnL.toFixed(2)}%`);
+            console.log(`   📊 Jupiter quote: ${quotedPnL.toFixed(2)}%`);
+            console.log(`   📊 Deviation: ${pnlDeviation.toFixed(2)}%`);
+            
+            // Check if Jupiter price is much worse than expected
+            if (pnlDeviation > config.MAX_PRICE_DEVIATION_PCT) {
+              console.log(`   ⚠️  Jupiter price ${pnlDeviation.toFixed(2)}% worse than expected!`);
+              
+              if (config.RETRY_ON_BAD_PRICE && attempts < config.MAX_EXECUTION_RETRIES) {
+                console.log(`   ⏸️  Waiting ${config.RETRY_DELAY_MS / 1000}s for better price... (Attempt ${attempts}/${config.MAX_EXECUTION_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, config.RETRY_DELAY_MS));
+                continue; // Retry
+              } else {
+                console.log(`   ⚠️  Proceeding anyway (no retries left or disabled)`);
+              }
+            } else {
+              console.log(`   ✅ Pre-flight passed: Price within ${config.MAX_PRICE_DEVIATION_PCT}% tolerance`);
+            }
+          }
+        }
+        
+        // Execute swap with adaptive slippage
+        console.log(`\n   💱 Executing swap (attempt ${attempts})...`);
+        result = await this.jupiterSwap.swap(
+          inputMint,
+          outputMint,
+          amountIn,
+          inputDecimals,
+          outputDecimals,
+          'SELL',
+          slippageBps
+        );
+        
+        // Check if swap failed due to slippage
+        if (!result.success && result.error?.includes('slippage')) {
+          console.log(`   ⚠️  Swap failed: Slippage too high`);
+          
+          if (config.RETRY_ON_BAD_PRICE && attempts < config.MAX_EXECUTION_RETRIES) {
+            console.log(`   ⏸️  Waiting ${config.RETRY_DELAY_MS / 1000}s and retrying... (Attempt ${attempts}/${config.MAX_EXECUTION_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, config.RETRY_DELAY_MS));
+            result = null; // Reset to retry
+            continue;
+          } else {
+            console.log(`   ❌ Giving up after ${attempts} attempts\n`);
+            break;
+          }
+        }
+        
+        // If we get here, either success or non-slippage error
+        break;
+      }
+      
+      if (result && result.success) {
         this.positionManager.closePosition(position, currentPrice, result.signature, reason);
         
         // CRITICAL: Refresh capital from blockchain after sell
         await this.positionManager.updateCapitalFromChain();
         const newBalance = this.positionManager.currentCapital;
         
-        console.log(`   ✅ Position closed: ${result.amountOut}`);
+        const finalPnL = ((result.price - position.entryPrice) / position.entryPrice) * 100;
+        console.log(`   ✅ Position closed: ${result.amountOut} SOL`);
+        console.log(`   📊 Final P&L: ${finalPnL > 0 ? '+' : ''}${finalPnL.toFixed(2)}%`);
         console.log(`   Signature: ${result.signature}`);
         console.log(`   💰 New balance: ${newBalance.toFixed(6)} SOL\n`);
       } else {
-        console.log(`   ❌ Sell failed: ${result.error}\n`);
+        const errorMsg = result?.error || 'Unknown error';
+        console.log(`   ❌ Sell failed after ${attempts} attempts: ${errorMsg}\n`);
       }
     } catch (err) {
       console.error(`   ❌ Execute error: ${err.message}\n`);
