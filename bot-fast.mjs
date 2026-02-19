@@ -193,6 +193,7 @@ class WickBotFast {
   
   logState(signal, indicators, candle) {
     const timestamp = new Date().toISOString();
+    const hasPosition = this.positionManager.positions.length > 0;
     
     console.log(`[${timestamp}]`);
     console.log(`Signal: ${signal.action.toUpperCase()} (Confidence: ${signal.confidence}%)`);
@@ -201,6 +202,11 @@ class WickBotFast {
     // Show key indicators
     if (signal.details.rsi) {
       console.log(`RSI: ${signal.details.rsi} | Price: $${signal.details.price || candle.close.toFixed(2)}`);
+    }
+    
+    // Show position status
+    if (hasPosition) {
+      console.log(`📊 Holding ${this.positionManager.positions.length} position(s) - waiting for SELL signal`);
     }
     
     console.log('');
@@ -213,7 +219,11 @@ class WickBotFast {
     }
     
     // Check max positions
+    const currentPositions = this.positionManager.positions.length;
+    const maxPositions = config.MAX_POSITIONS;
+    
     if (this.positionManager.hasMaxPositions()) {
+      console.log(`⏸️  Already holding max positions (${currentPositions}/${maxPositions}) - ignoring ${signal.action.toUpperCase()} signal`);
       return;
     }
     
@@ -304,7 +314,10 @@ class WickBotFast {
   async monitorPositions(signal, candle) {
     const positions = this.positionManager.positions;
     
-    if (positions.length === 0) return;
+    if (positions.length === 0) {
+      // No positions to monitor
+      return;
+    }
     
     const currentPrice = candle.close;
     
@@ -332,7 +345,8 @@ class WickBotFast {
       else {
         // Log position status
         const holdMinutes = Math.floor(holdTime / 60000);
-        console.log(`💎 Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${holdMinutes}m`);
+        const pnlColor = pnl > 0 ? '🟢' : '🔴';
+        console.log(`💎 ${pnlColor} Position #${position.id}: ${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}% | Hold: ${holdMinutes}m | Entry: $${position.entryPrice.toFixed(6)}`);
       }
     }
   }
