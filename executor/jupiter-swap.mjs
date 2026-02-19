@@ -15,7 +15,7 @@ export class JupiterSwap {
     this.wallet = null;
     this.jupiterBaseUrl = 'https://lite-api.jup.ag/ultra/v1';
     this.jupiterApiKey = process.env.JUPITER_API_KEY || '';
-    this.solPriceUSD = 86;  // Cached SOL price, updated periodically
+    this.solPriceUSD = 200;  // Default SOL price fallback
     this.lastPriceUpdate = 0;
   }
   
@@ -32,11 +32,21 @@ export class JupiterSwap {
       const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
       const data = await response.json();
       if (data.pairs && data.pairs.length > 0) {
-        this.solPriceUSD = parseFloat(data.pairs[0].priceUsd);
-        this.lastPriceUpdate = now;
+        // Find SOL/USDC or SOL/USDT pair (major pairs only)
+        const majorPair = data.pairs.find(p => 
+          p.quoteToken?.symbol === 'USDC' || p.quoteToken?.symbol === 'USDT'
+        );
+        
+        if (majorPair) {
+          this.solPriceUSD = parseFloat(majorPair.priceUsd);
+          this.lastPriceUpdate = now;
+          console.log(`   💲 SOL price updated: $${this.solPriceUSD.toFixed(2)}`);
+        } else {
+          console.log('   ⚠️  No SOL/USDC pair found, using cached: $' + this.solPriceUSD);
+        }
       }
     } catch (err) {
-      console.log('   ⚠️  Using cached SOL price: $' + this.solPriceUSD);
+      console.log('   ⚠️  SOL price fetch failed, using cached: $' + this.solPriceUSD);
     }
     
     return this.solPriceUSD;
@@ -373,20 +383,23 @@ export class JupiterSwap {
       const solPrice = await this.getSolPrice();
       let priceUSD;
       
+      // Use RAW amounts for accurate price calculation (not display strings)
+      const amountInRaw = amountIn / Math.pow(10, inputDecimals);
+      const amountOutRaw = amountOut / Math.pow(10, outputDecimals);
+      
       // Determine which token is SOL and calculate price correctly
       if (inputMint === config.TOKEN_ADDRESS_SOL) {
         // Buying tokens with SOL: price = (SOL spent × SOL price) / tokens received
-        const solSpent = parseFloat(displayAmount);
-        const tokensReceived = parseFloat(displayAmountOut);
-        priceUSD = (solSpent * solPrice) / tokensReceived;
+        priceUSD = (amountInRaw * solPrice) / amountOutRaw;
+        console.log(`   💲 Price calc: (${amountInRaw.toFixed(6)} SOL × $${solPrice}) / ${amountOutRaw.toFixed(2)} tokens = $${priceUSD.toFixed(6)}`);
       } else if (outputMint === config.TOKEN_ADDRESS_SOL) {
         // Selling tokens for SOL: price = (SOL received × SOL price) / tokens sold
-        const solReceived = parseFloat(displayAmountOut);
-        const tokensSold = parseFloat(displayAmount);
-        priceUSD = (solReceived * solPrice) / tokensSold;
+        priceUSD = (amountOutRaw * solPrice) / amountInRaw;
+        console.log(`   💲 Price calc: (${amountOutRaw.toFixed(6)} SOL × $${solPrice}) / ${amountInRaw.toFixed(2)} tokens = $${priceUSD.toFixed(6)}`);
       } else {
         // Neither is SOL, fallback to ratio (edge case)
-        priceUSD = amountOut / amountIn;
+        priceUSD = amountOutRaw / amountInRaw;
+        console.log(`   ⚠️  Non-SOL pair, using raw ratio`);
       }
       
       return {
