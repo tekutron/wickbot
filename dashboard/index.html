@@ -414,7 +414,7 @@
           <div id="calculatedPosition" style="display: none; padding: 15px; background: rgba(74, 222, 128, 0.1); border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #4ade80;">
             <div style="font-size: 0.9em; color: #888; margin-bottom: 8px;">New Position Size:</div>
             <div style="font-size: 1.4em; font-weight: 600;">
-              <span id="positionSolAmount">0.00</span> SOL / <span id="positionUsdcAmount">0.00</span> USDC
+              <span id="positionSolAmount">0.00</span> SOL
             </div>
           </div>
           
@@ -758,17 +758,14 @@
       const slider = document.getElementById('positionSlider');
       const percentage = parseInt(slider.value);
       
-      // Get current capital (use USDC wallet as primary)
-      const usdcBalance = botState.wallets.usdc.usdc || 0;
-      const solBalance = botState.wallets.sol.sol || 0;
+      // Get current capital (single wallet mode)
+      const solBalance = botState.wallet?.sol || 0;
       
-      // Calculate position sizes
-      const positionUsdc = (usdcBalance * percentage / 100).toFixed(2);
+      // Calculate position size
       const positionSol = (solBalance * percentage / 100).toFixed(4);
       
-      // Show calculated amounts
+      // Show calculated amount
       document.getElementById('positionSolAmount').textContent = positionSol;
-      document.getElementById('positionUsdcAmount').textContent = positionUsdc;
       document.getElementById('calculatedPosition').style.display = 'block';
       
       // Update config via API
@@ -780,12 +777,16 @@
         });
         
         if (response.ok) {
-          console.log('Position size updated to ' + percentage + '%');
+          const result = await response.json();
+          console.log('✅ Position size updated to ' + percentage + '%');
+          alert('✅ Position size updated to ' + percentage + '%\nNext trade will use: ' + positionSol + ' SOL');
         } else {
           console.error('Failed to update position size');
+          alert('❌ Failed to update position size');
         }
       } catch (error) {
         console.error('Error updating position size:', error);
+        alert('❌ Error: ' + error.message);
       }
     }
     
