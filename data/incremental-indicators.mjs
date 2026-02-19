@@ -216,6 +216,7 @@ export class IncrementalEngine {
     this.ema20 = new IncrementalEMA(20);
     this.ema50 = new IncrementalEMA(50);
     
+    this.candles = [];  // Track candle history for entry confirmation
     this.lastCandle = null;
     this.updateCount = 0;
   }
@@ -234,6 +235,12 @@ export class IncrementalEngine {
     const macd = this.macd.update(price);
     const ema20 = this.ema20.update(price);
     const ema50 = this.ema50.update(price);
+    
+    // Store candle history (keep last 100 for entry confirmation)
+    this.candles.push(candle);
+    if (this.candles.length > 100) {
+      this.candles.shift();  // Remove oldest
+    }
     
     this.lastCandle = candle;
     this.updateCount++;
