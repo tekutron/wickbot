@@ -5,14 +5,14 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
-  // Custom Token Trading
-  CUSTOM_TOKEN_ADDRESS: '8opvqaWysX1oYbXuTL8PHaoaTiXD69VFYAX4smPebonk',
-  CUSTOM_TOKEN_SYMBOL: 'WAR',
+  // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
+  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
+  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.207,   // Updated: 0.197 USDC wallet + 0.01 SOL wallet
+  STARTING_CAPITAL_SOL: 0.01,     // After WAR disaster, ~0.01 SOL remaining (2026-02-19)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 20,        // 20% per trade (conservative risk management)
