@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.088465,    // Updated after WAR losses: 0.088465 SOL (2026-02-19 10:49)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 25,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 50,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings
