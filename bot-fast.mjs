@@ -286,29 +286,35 @@ class WickBotFast {
     console.log(`\n🎯 DIP DETECTED! (Confidence: ${signal.confidence}%)`);
     console.log(`   ${signal.reason}`);
     
-    // ENTRY CONFIRMATION (2026-02-19 optimization)
+    // ENTRY CONFIRMATION (2026-02-19 MOMENTUM-BASED)
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
       // Use candle data from incremental engine
       const candles = this.incrementalEngine?.candles || [];
       
-      if (candles.length < 5) {
+      if (candles.length < 3) {
         console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping confirmation\n`);
         return;
       }
       
-      // 1. Check if price is far enough from recent high
-      const recentCandles = candles.slice(-5);
-      const recentHigh = Math.max(...recentCandles.map(c => c.high));
-      const currentPrice = candles[candles.length - 1].close;
-      const priceFromHigh = ((currentPrice - recentHigh) / recentHigh) * 100;
+      // 1. RED CANDLE FILTER - Don't catch falling knives
+      const lastCandle = candles[candles.length - 1];
+      const candleBody = ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100;
       
-      if (priceFromHigh > -config.ENTRY_DIP_FROM_HIGH_PCT) {
-        console.log(`   ⚠️  Price only ${priceFromHigh.toFixed(2)}% from recent high (need ${-config.ENTRY_DIP_FROM_HIGH_PCT}%)`);
-        console.log(`   ⏸️  Waiting for deeper dip...\n`);
+      if (candleBody < -2.0) {
+        console.log(`   🔴 Recent candle RED ${candleBody.toFixed(2)}% - avoiding dump`);
+        console.log(`   ⏸️  Waiting for green candle...\n`);
         return;
       }
       
-      // 2. Check volume confirmation
+      // 2. MOMENTUM CHECK - Must be positive
+      const momentum1m = signal.momentum1m || 0;
+      if (momentum1m <= 0) {
+        console.log(`   📉 1m momentum ${momentum1m.toFixed(2)}% - not bullish enough`);
+        console.log(`   ⏸️  Waiting for positive momentum...\n`);
+        return;
+      }
+      
+      // 3. VOLUME SPIKE - Confirm buying pressure
       if (signal.volume5m && signal.volume1hAvg) {
         const volumeRatio = signal.volume5m / signal.volume1hAvg;
         if (volumeRatio < config.MIN_VOLUME_RATIO) {
@@ -319,7 +325,7 @@ class WickBotFast {
         console.log(`   ✅ Volume confirmed: ${volumeRatio.toFixed(2)}x average`);
       }
       
-      console.log(`   ✅ Entry confirmed: ${priceFromHigh.toFixed(2)}% below recent high`);
+      console.log(`   ✅ Entry confirmed: ${momentum1m > 0 ? 'GREEN' : 'RED'} candle (${candleBody.toFixed(2)}%) + ${momentum1m.toFixed(2)}% momentum`);
     }
     
     const positionSize = this.positionManager.getPositionSize();

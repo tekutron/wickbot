@@ -66,9 +66,10 @@ export const config = {
   MIN_BUY_CONFIDENCE: 50,       // Need 3/6 conditions (50% = 3 out of 6) - catches dips faster
   MIN_SELL_CONFIDENCE: 50,      // Need 3/5 conditions (50% = 3 out of 5) - exits tops faster
   
-  // Entry confirmation (2026-02-19) - Avoid buying tops
-  REQUIRE_ENTRY_CONFIRMATION: true,   // Wait for reversal confirmation
-  ENTRY_DIP_FROM_HIGH_PCT: 5,         // Must be 5% below recent high (5-candle lookback)
+  // Entry confirmation (2026-02-19 MOMENTUM-BASED) - Buy strength, avoid dumps
+  REQUIRE_ENTRY_CONFIRMATION: true,   // Momentum + volume confirmation
+  MIN_CANDLE_BODY_POSITIVE: -2.0,     // Reject if recent candle red <-2% (avoid dumps)
+  MIN_MOMENTUM_1M: 0,                 // Require positive 1m momentum (bullish)
   MIN_VOLUME_RATIO: 2.0,              // Require 2x average volume for entry
   
   // Dip/Top detection thresholds (AGGRESSIVE - catches moves earlier)
