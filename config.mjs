@@ -6,16 +6,16 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
-  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
+  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
+  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.1839,   // After cleanup: 0.1839 SOL available (2026-02-18 21:36)
+  STARTING_CAPITAL_SOL: 0.185,    // After wallet consolidation: 0.185 SOL (2026-02-19 10:13)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 20,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 30,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings
@@ -76,9 +76,9 @@ export const config = {
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
   
   // Wallets
-  WALLET_PATH: './wallets/wickbot_wallet.json', // Original SOL wallet
-  USDC_WALLET_PATH: './wallets/wickbot_usdc_wallet.json', // USDC trading wallet
-  ACTIVE_WALLET: process.env.ACTIVE_WALLET || 'USDC', // 'SOL' or 'USDC'
+  WALLET_PATH: './wallets/wickbot_wallet.json', // Main wallet (consolidated)
+  // USDC_WALLET_PATH: Removed - using single wallet now (2026-02-19)
+  ACTIVE_WALLET: 'SOL', // Using main wallet only
   
   // Dashboard
   DASHBOARD_PORT: 3000,

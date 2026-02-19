@@ -45,10 +45,8 @@ export class JupiterSwap {
   async initialize() {
     this.connection = new Connection(config.RPC_URL, 'confirmed');
     
-    // Load wallet (check for USDC wallet first, fallback to SOL wallet)
-    const walletPath = config.ACTIVE_WALLET === 'USDC' && fs.existsSync(config.USDC_WALLET_PATH)
-      ? config.USDC_WALLET_PATH
-      : config.WALLET_PATH;
+    // Load main wallet (single wallet mode)
+    const walletPath = config.WALLET_PATH;
     
     if (!fs.existsSync(walletPath)) {
       throw new Error(`Wallet not found: ${walletPath}`);
@@ -57,7 +55,7 @@ export class JupiterSwap {
     const walletData = JSON.parse(fs.readFileSync(walletPath, 'utf8'));
     this.wallet = Keypair.fromSecretKey(Uint8Array.from(walletData));
     
-    console.log(`✅ Jupiter swap initialized (${config.ACTIVE_WALLET} wallet)`);
+    console.log(`✅ Jupiter swap initialized`);
   }
   
   /**
