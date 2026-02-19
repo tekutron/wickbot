@@ -336,7 +336,7 @@ class WickBotFast {
         
         // Store decimals for later sell
         if (result.success) {
-          result.tokenDecimals = tokenDecimals;
+          result.tokenDecimals = tokenInfo.decimals;
         }
       } else {
         // Default mode: USDC → SOL

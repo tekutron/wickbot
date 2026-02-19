@@ -12,10 +12,10 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.185,    // After wallet consolidation: 0.185 SOL (2026-02-19 10:13)
+  STARTING_CAPITAL_SOL: 0.088465,    // Updated after WAR losses: 0.088465 SOL (2026-02-19 10:49)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 30,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 25,        // 20% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Transaction Settings
