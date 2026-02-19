@@ -324,44 +324,15 @@
       <!-- Left Column: Chart & Signals -->
       <div>
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>💰 Wallets</h2>
-            <select id="walletSelector" onchange="switchWallet()" style="padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e0e0e0;">
-              <option value="SOL">Main Wallet</option>
-              <option value="USDC" selected>Main Wallet</option>
-            </select>
-          </div>
+          <h2>💰 Main Wallet</h2>
           
-          <!-- Main Wallet -->
-          <div class="wallet-info" id="solWalletInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+          <div class="wallet-info" style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
             <div>
-              <div class="wallet-balance" id="solWalletBalance">0.0000 SOL</div>
-              <div class="wallet-address" onclick="copyAddress('sol')" style="font-size: 0.75em; margin-top: 5px;">
-                DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
+              <div class="wallet-balance" id="mainWalletBalance" style="font-size: 2em; font-weight: bold; color: #4CAF50;">0.0000 SOL</div>
+              <div class="wallet-address" onclick="copyAddress('main')" style="font-size: 0.75em; margin-top: 10px; cursor: pointer; opacity: 0.7;">
+                <span id="mainWalletAddress">Loading...</span>
               </div>
-              <div class="wallet-balance" id="solWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 15px;">0.00 USDC</div>
-              <div class="wallet-address" onclick="copyAddress('sol')" style="font-size: 0.75em; margin-top: 5px;">
-                DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf
-              </div>
-              <div style="color: #888; margin-top: 10px;" id="solWalletUSD">Total: $0.00</div>
-            </div>
-          </div>
-          
-          <!-- USDC Wallet -->
-          <div class="wallet-info" id="usdcWalletInfo">
-            <div>
-              <div class="wallet-balance" id="usdcWalletBalance">0.0000 SOL</div>
-              <div class="wallet-address" onclick="copyAddress('usdc')" style="font-size: 0.75em; margin-top: 5px;">
-                82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu
-              </div>
-              <div class="wallet-balance" id="usdcWalletBalanceUsdc" style="font-size: 1.2em; margin-top: 15px;">0.00 USDC</div>
-              <div class="wallet-address" onclick="copyAddress('usdc')" style="font-size: 0.75em; margin-top: 5px;">
-                82oKLf85huJXdAUrzdQnkns8pJwBxbPQFWKdTEGs45gu
-              </div>
-              <div style="color: #888; margin-top: 10px;" id="usdcWalletUSD">Total: $0.00</div>
-            </div>
-            <div style="text-align: right; margin-top: 10px;">
-              <button class="btn-secondary" onclick="transferFunds()">📤 Transfer</button>
+              <div style="color: #888; margin-top: 15px; font-size: 1.1em;" id="mainWalletUSD">~$0.00</div>
             </div>
           </div>
         </div>
@@ -614,23 +585,20 @@
         stopBtn.style.display = 'none';
       }
       
-      // Update both wallets
-      if (botState.wallets) {
-        // Main Wallet
-        const solWalletSol = (botState.wallets.sol?.sol || 0).toFixed(4);
-        const solWalletUsdc = (botState.wallets.sol?.usdc || 0).toFixed(2);
-        const solWalletTotal = ((botState.wallets.sol?.sol || 0) * 200 + (botState.wallets.sol?.usdc || 0)).toFixed(2);
-        document.getElementById('solWalletBalance').textContent = `${solWalletSol} SOL`;
-        document.getElementById('solWalletBalanceUsdc').textContent = `${solWalletUsdc} USDC`;
-        document.getElementById('solWalletUSD').textContent = `Total: $${solWalletTotal}`;
-        
-        // USDC Wallet
-        const usdcWalletSol = (botState.wallets.usdc?.sol || 0).toFixed(4);
-        const usdcWalletUsdc = (botState.wallets.usdc?.usdc || 0).toFixed(2);
-        const usdcWalletTotal = ((botState.wallets.usdc?.sol || 0) * 200 + (botState.wallets.usdc?.usdc || 0)).toFixed(2);
-        document.getElementById('usdcWalletBalance').textContent = `${usdcWalletSol} SOL`;
-        document.getElementById('usdcWalletBalanceUsdc').textContent = `${usdcWalletUsdc} USDC`;
-        document.getElementById('usdcWalletUSD').textContent = `Total: $${usdcWalletTotal}`;
+      // Update main wallet (single wallet mode)
+      const walletData = botState.wallet || botState.balance || {};
+      const solBalance = (walletData.sol || 0).toFixed(4);
+      const walletAddress = walletData.address || 'DqfDgvcGMhHczhAeQp6nUNFGNkhQSbGPGjKLEn4QGihf';
+      const walletUSD = ((walletData.sol || 0) * 200).toFixed(2);
+      
+      if (document.getElementById('mainWalletBalance')) {
+        document.getElementById('mainWalletBalance').textContent = `${solBalance} SOL`;
+      }
+      if (document.getElementById('mainWalletAddress')) {
+        document.getElementById('mainWalletAddress').textContent = walletAddress;
+      }
+      if (document.getElementById('mainWalletUSD')) {
+        document.getElementById('mainWalletUSD').textContent = `~$${walletUSD}`;
       }
       
       // Update stats
