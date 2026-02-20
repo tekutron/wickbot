@@ -42,7 +42,7 @@ export const config = {
   QUICK_TP_1: 2.0,              // First profit target (adjusted for fees - was 1.5%)
   QUICK_TP_2: 4.0,              // Second profit target (adjusted for fees - was 3.0%)
   QUICK_SL: 2.0,                // Tight stop loss (cut losses fast)
-  MAX_HOLD_TIME_SEC: 10,        // Force exit after 10 seconds (micro-scalp)
+  MAX_HOLD_TIME_SEC: 60,        // Force exit after 60 seconds (allow wicks to form)
   
   // Safety stops (BACKUP ONLY - extreme caps, not targets)
   SAFETY_TP_PCT: 20,            // Extreme profit cap (safety net, not target)

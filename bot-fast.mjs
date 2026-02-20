@@ -438,36 +438,26 @@ class WickBotFast {
       const holdTime = Date.now() - position.entryTime;
       const holdTimeSec = holdTime / 1000;
       
-      // MICRO-SCALP EXIT LOGIC (2026-02-19 optimization)
-      // Priority: Hold time → Profit targets → Stop loss → Signal
+      // WICK-BASED EXIT LOGIC (wickbot - signal-driven)
+      // Priority: Signal → Safety stops
       
-      // 1. MAX HOLD TIME - Force exit after 10 seconds
-      if (holdTimeSec >= config.MAX_HOLD_TIME_SEC) {
+      // 1. SIGNAL EXIT - Primary exit on wick/top signals
+      if (this.signalGenerator.shouldExit(position, signal)) {
+        console.log(`\n🏁 WICK/TOP DETECTED! Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
+        console.log(`   ${signal.reason}`);
+        await this.executeSell(position, currentPrice, 'SIGNAL');
+      }
+      // 2. MAX HOLD TIME - Safety exit after 60 seconds (backup)
+      else if (holdTimeSec >= config.MAX_HOLD_TIME_SEC) {
         console.log(`\n⏱️  MAX HOLD TIME (${holdTimeSec.toFixed(0)}s) - Force exit at ${pnl.toFixed(2)}%`);
         await this.executeSell(position, currentPrice, 'MAX_HOLD');
       }
-      // 2. QUICK PROFIT TARGET 2 - Take profit at +3%
-      else if (pnl >= config.QUICK_TP_2) {
-        console.log(`\n🎯 QUICK PROFIT TARGET 2! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
-        await this.executeSell(position, currentPrice, 'QUICK_TP2');
-      }
-      // 3. QUICK PROFIT TARGET 1 - Take profit at +1.5%
-      else if (pnl >= config.QUICK_TP_1) {
-        console.log(`\n💰 QUICK PROFIT TARGET 1! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
-        await this.executeSell(position, currentPrice, 'QUICK_TP1');
-      }
-      // 4. QUICK STOP LOSS - Cut losses at -2%
+      // 3. QUICK STOP LOSS - Safety stop at -2% (backup)
       else if (pnl <= -config.QUICK_SL) {
         console.log(`\n🛑 QUICK STOP LOSS! ${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
         await this.executeSell(position, currentPrice, 'QUICK_SL');
       }
-      // 5. SIGNAL EXIT - Exit on opposite signal
-      else if (this.signalGenerator.shouldExit(position, signal)) {
-        console.log(`\n🏁 TOP DETECTED! Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
-        console.log(`   ${signal.reason}`);
-        await this.executeSell(position, currentPrice, 'SIGNAL');
-      }
-      // 6. SAFETY CAPS (backup only, should rarely trigger)
+      // 4. SAFETY CAPS (extreme backup only)
       else if (pnl >= config.SAFETY_TP_PCT) {
         console.log(`\n🎯 SAFETY PROFIT CAP! +${pnl.toFixed(2)}%`);
         await this.executeSell(position, currentPrice, 'SAFETY_TP');
