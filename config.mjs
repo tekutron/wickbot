@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
-  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
+  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
+  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -40,8 +40,8 @@ export const config = {
   MAX_EXECUTION_RETRIES: 3,       // Max attempts before giving up
   RETRY_DELAY_MS: 2000,           // Wait 2s between retries
   
-  // Signal-based exits (PRIMARY - signal-driven, not TP/SL)
-  USE_SIGNAL_EXITS: true,       // Exit when opposite signal triggers
+  // Signal-based exits (DISABLED 2026-02-19 18:35 - premature exits)
+  USE_SIGNAL_EXITS: false,      // Disabled - use fixed TP/SL instead
   SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
   // MICRO-SCALP MODE (2026-02-19) - Based on trade analysis + FEE OPTIMIZATION
@@ -90,8 +90,8 @@ export const config = {
   BB_TOUCH_TOLERANCE: 0.001,    // 0.1% tolerance for "touching" bands
   
   // Exit strategy
-  EXIT_ON_OPPOSITE_SIGNAL: true,  // Sell when sell signal triggers (not fixed TP)
-  EXIT_CONFIDENCE_MIN: 50,        // Min confidence for signal-driven exit (lowered for aggressive mode)
+  EXIT_ON_OPPOSITE_SIGNAL: false, // Disabled - use fixed TP/SL (2026-02-19 18:35)
+  EXIT_CONFIDENCE_MIN: 50,        // Min confidence for signal-driven exit (not used when disabled)
   
   // Minimum movement filter (TESTING MODE - very sensitive)
   MIN_CANDLE_BODY_PCT: 0.05,    // Skip if candle body < 0.05% (lowered for testing from 0.2%)

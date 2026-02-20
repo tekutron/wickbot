@@ -443,21 +443,25 @@ class WickBotFast {
       const holdTime = Date.now() - position.entryTime;
       const holdTimeSec = holdTime / 1000;
       
-      // WICK-BASED EXIT LOGIC (wickbot - signal-driven)
-      // Priority: Signal → Safety stops
+      // FIXED TP/SL EXIT LOGIC (2026-02-19 18:35)
+      // Priority: TP2 → TP1 → Max Hold → SL → Emergency
       
-      // 1. SIGNAL EXIT - Primary exit on wick/top signals
-      if (this.signalGenerator.shouldExit(position, signal)) {
-        console.log(`\n🏁 WICK/TOP DETECTED! Exiting position (${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%)`);
-        console.log(`   ${signal.reason}`);
-        await this.executeSell(position, currentPrice, 'SIGNAL');
+      // 1. TAKE PROFIT 2 - Quick exit at +4%
+      if (pnl >= config.QUICK_TP_2) {
+        console.log(`\n🎯 QUICK TP2! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
+        await this.executeSell(position, currentPrice, 'QUICK_TP2');
       }
-      // 2. MAX HOLD TIME - Safety exit after 60 seconds (backup)
+      // 2. TAKE PROFIT 1 - Quick exit at +2%
+      else if (pnl >= config.QUICK_TP_1) {
+        console.log(`\n💚 QUICK TP1! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
+        await this.executeSell(position, currentPrice, 'QUICK_TP1');
+      }
+      // 3. MAX HOLD TIME - Force exit after 60 seconds
       else if (holdTimeSec >= config.MAX_HOLD_TIME_SEC) {
         console.log(`\n⏱️  MAX HOLD TIME (${holdTimeSec.toFixed(0)}s) - Force exit at ${pnl.toFixed(2)}%`);
         await this.executeSell(position, currentPrice, 'MAX_HOLD');
       }
-      // 3. QUICK STOP LOSS - Safety stop at -2% (backup)
+      // 4. QUICK STOP LOSS - Safety stop at -2%
       else if (pnl <= -config.QUICK_SL) {
         console.log(`\n🛑 QUICK STOP LOSS! ${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
         await this.executeSell(position, currentPrice, 'QUICK_SL');
