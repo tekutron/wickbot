@@ -17,6 +17,12 @@ export class PositionManager {
     this.trades = [];
     this.startingCapital = config.STARTING_CAPITAL_SOL;
     this.currentCapital = config.STARTING_CAPITAL_SOL;
+    
+    // Circuit Breaker State (NEW 2026-02-19)
+    this.sessionStartCapital = config.STARTING_CAPITAL_SOL; // Capital at session start
+    this.consecutiveLosses = 0;
+    this.circuitBreakerTripped = false;
+    this.circuitBreakerTime = null;
   }
   
   async initialize() {
@@ -158,6 +164,9 @@ export class PositionManager {
     const netChange = position.amountSol * (pnl / 100);
     this.currentCapital += netChange;
     
+    // Record trade result for circuit breaker (NEW 2026-02-19)
+    this.recordTradeResult(pnl);
+    
     this.saveState();
     
     console.log(`\n💰 Position closed:`);
@@ -260,6 +269,86 @@ export class PositionManager {
   isMaxDrawdownReached() {
     const drawdown = ((this.startingCapital - this.currentCapital) / this.startingCapital) * 100;
     return drawdown >= config.MAX_DRAWDOWN_PCT;
+  }
+  
+  /**
+   * Check if session drawdown exceeds limit (NEW 2026-02-19)
+   */
+  isSessionDrawdownExceeded() {
+    const sessionDrawdown = ((this.sessionStartCapital - this.currentCapital) / this.sessionStartCapital) * 100;
+    return sessionDrawdown >= config.MAX_SESSION_DRAWDOWN_PCT;
+  }
+  
+  /**
+   * Check if consecutive losses exceeded (NEW 2026-02-19)
+   */
+  isConsecutiveLossesExceeded() {
+    return this.consecutiveLosses >= config.MAX_CONSECUTIVE_LOSSES;
+  }
+  
+  /**
+   * Check if circuit breaker should block trading (NEW 2026-02-19)
+   */
+  isCircuitBreakerActive() {
+    if (!this.circuitBreakerTripped) return false;
+    
+    if (!this.circuitBreakerTime) return false;
+    
+    const cooldownMs = config.COOLDOWN_AFTER_STOP_MIN * 60 * 1000;
+    const elapsed = Date.now() - this.circuitBreakerTime;
+    
+    if (elapsed >= cooldownMs) {
+      // Cooldown complete, reset
+      console.log('\n✅ Circuit breaker cooldown complete - trading re-enabled\n');
+      this.circuitBreakerTripped = false;
+      this.circuitBreakerTime = null;
+      this.consecutiveLosses = 0; // Reset counter
+      return false;
+    }
+    
+    const remaining = Math.ceil((cooldownMs - elapsed) / 1000 / 60);
+    console.log(`\n🛑 Circuit breaker active - ${remaining} minutes remaining\n`);
+    return true;
+  }
+  
+  /**
+   * Trip circuit breaker (NEW 2026-02-19)
+   */
+  tripCircuitBreaker(reason) {
+    this.circuitBreakerTripped = true;
+    this.circuitBreakerTime = Date.now();
+    
+    console.log('\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🛑 CIRCUIT BREAKER ACTIVATED');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`Reason: ${reason}`);
+    console.log(`Cooldown: ${config.COOLDOWN_AFTER_STOP_MIN} minutes`);
+    console.log(`Current capital: ${this.currentCapital.toFixed(4)} SOL`);
+    console.log(`Session drawdown: ${((this.sessionStartCapital - this.currentCapital) / this.sessionStartCapital * 100).toFixed(2)}%`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
+    this.saveState();
+  }
+  
+  /**
+   * Track trade result for circuit breaker (NEW 2026-02-19)
+   */
+  recordTradeResult(pnl) {
+    if (pnl < 0) {
+      this.consecutiveLosses++;
+      console.log(`   🔴 Consecutive losses: ${this.consecutiveLosses}/${config.MAX_CONSECUTIVE_LOSSES}`);
+    } else {
+      this.consecutiveLosses = 0; // Reset on win
+    }
+    
+    // Check circuit breaker conditions
+    if (this.isConsecutiveLossesExceeded()) {
+      this.tripCircuitBreaker(`${config.MAX_CONSECUTIVE_LOSSES} consecutive losses`);
+    } else if (this.isSessionDrawdownExceeded()) {
+      const sessionDD = ((this.sessionStartCapital - this.currentCapital) / this.sessionStartCapital * 100).toFixed(2);
+      this.tripCircuitBreaker(`Session drawdown ${sessionDD}% exceeded ${config.MAX_SESSION_DRAWDOWN_PCT}%`);
+    }
   }
   
   /**

@@ -259,6 +259,11 @@ class WickBotFast {
       return; // No action needed
     }
     
+    // Check circuit breaker first (NEW 2026-02-19)
+    if (this.positionManager.isCircuitBreakerActive()) {
+      return; // Silently skip (circuit breaker logs itself)
+    }
+    
     // Check max positions
     const currentPositions = this.positionManager.positions.length;
     const maxPositions = config.MAX_POSITIONS;
@@ -456,6 +461,12 @@ class WickBotFast {
       else if (pnl <= -config.QUICK_SL) {
         console.log(`\n🛑 QUICK STOP LOSS! ${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
         await this.executeSell(position, currentPrice, 'QUICK_SL');
+      }
+      // 3b. EMERGENCY EXIT - Circuit breaker for runaway losses (NEW 2026-02-19)
+      else if (pnl <= -config.MAX_LOSS_PER_TRADE_PCT) {
+        console.log(`\n🚨 EMERGENCY EXIT! Loss ${pnl.toFixed(2)}% exceeds ${config.MAX_LOSS_PER_TRADE_PCT}%`);
+        console.log(`   Runaway loss detected - exiting immediately!`);
+        await this.executeSell(position, currentPrice, 'EMERGENCY');
       }
       // 4. SAFETY CAPS (extreme backup only)
       else if (pnl >= config.SAFETY_TP_PCT) {

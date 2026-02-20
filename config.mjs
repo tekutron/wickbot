@@ -12,11 +12,17 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.088465,    // Updated after WAR losses: 0.088465 SOL (2026-02-19 10:49)
+  STARTING_CAPITAL_SOL: 0.085845,    // Updated after failed session: 0.0858 SOL (2026-02-19 17:11)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 25,        // 20% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 25,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
+  
+  // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!
+  MAX_SESSION_DRAWDOWN_PCT: 15,       // Stop bot if session loses >15%
+  MAX_CONSECUTIVE_LOSSES: 3,          // Stop bot after 3 losses in a row
+  MAX_LOSS_PER_TRADE_PCT: 5,          // Emergency exit if loss >5% (safety net)
+  COOLDOWN_AFTER_STOP_MIN: 30,        // Wait 30min before allowing restart
   
   // Transaction Settings (2026-02-19 FEE OPTIMIZATION)
   PRIORITY_FEE_LAMPORTS: 100000,  // 0.0001 SOL priority fee (90% reduction - still prioritized)
@@ -69,8 +75,14 @@ export const config = {
   // Entry confirmation (2026-02-19 MOMENTUM-BASED) - Buy strength, avoid dumps
   REQUIRE_ENTRY_CONFIRMATION: true,   // Momentum + volume confirmation
   MIN_CANDLE_BODY_POSITIVE: -2.0,     // Reject if recent candle red <-2% (avoid dumps)
-  MIN_MOMENTUM_1M: 0,                 // Require positive 1m momentum (bullish)
+  MIN_MOMENTUM_1M: 1.0,               // Require +1% 1m momentum (sustained bullish, not just bounces)
+  MIN_MOMENTUM_5M: 0.5,               // Require +0.5% 5m momentum (trend confirmation)
   MIN_VOLUME_RATIO: 2.0,              // Require 2x average volume for entry
+  
+  // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
+  REQUIRE_TREND_FILTER: true,         // Check 15m/30m trend before entry
+  MIN_TREND_MOMENTUM_15M: -5,         // Allow entry if 15m momentum > -5% (not in free-fall)
+  MIN_TREND_MOMENTUM_30M: -10,        // Allow entry if 30m momentum > -10% (major trend check)
   
   // Dip/Top detection thresholds (AGGRESSIVE - catches moves earlier)
   RSI_DIP_THRESHOLD: 45,        // Higher = catch dips before extreme oversold
