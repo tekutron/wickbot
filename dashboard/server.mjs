@@ -433,6 +433,7 @@ function loadState() {
         } else {
           botState.circuitBreaker.cooldownRemaining = 0;
         }
+        console.log('✅ Circuit breaker loaded:', botState.circuitBreaker);
       }
     }
     
