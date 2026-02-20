@@ -382,6 +382,45 @@
           </div>
         </div>
         
+        <!-- Circuit Breaker Status Card (NEW 2026-02-19) -->
+        <div class="card" id="circuitBreakerCard" style="margin-top: 20px; display: none;">
+          <h2>🛑 Circuit Breaker</h2>
+          
+          <!-- Active Status -->
+          <div id="circuitBreakerStatus" style="padding: 15px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #ef4444;">
+            <div style="font-size: 1.2em; font-weight: 600; color: #ef4444; margin-bottom: 10px;">
+              🛑 CIRCUIT BREAKER ACTIVE
+            </div>
+            <div style="font-size: 0.9em; color: #888;">
+              Reason: <span id="circuitBreakerReason" style="color: #e0e0e0; font-weight: 600;">Loading...</span>
+            </div>
+            <div style="font-size: 0.9em; color: #888; margin-top: 5px;">
+              Cooldown: <span id="circuitBreakerCooldown" style="color: #f59e0b; font-weight: 600;">-- min</span>
+            </div>
+          </div>
+          
+          <!-- Metrics -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="stat-box">
+              <div class="stat-label">Session Drawdown</div>
+              <div class="stat-value" id="sessionDrawdown" style="color: #ef4444;">0%</div>
+              <div style="font-size: 0.75em; color: #888; margin-top: 5px;">Max: 15%</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Consecutive Losses</div>
+              <div class="stat-value" id="consecutiveLosses" style="color: #f59e0b;">0</div>
+              <div style="font-size: 0.75em; color: #888; margin-top: 5px;">Max: 3</div>
+            </div>
+          </div>
+          
+          <!-- Protection Info -->
+          <div style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.85em; color: #888;">
+            <div style="margin-bottom: 5px;">✅ Max loss per trade: 5%</div>
+            <div style="margin-bottom: 5px;">✅ Stops after 3 consecutive losses</div>
+            <div>✅ 30-minute cooldown after trip</div>
+          </div>
+        </div>
+        
         <div class="card" style="margin-top: 20px;">
           <h2>⚙️ Strategy Config</h2>
           
@@ -416,9 +455,10 @@
             </div>
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85em; color: #888;">
               <div style="margin-bottom: 5px;">🕯️ <strong>Primary exit:</strong> Bearish wick/top signals</div>
-              <div style="margin-bottom: 5px;">✅ Entry: Green candles with positive momentum</div>
+              <div style="margin-bottom: 5px;">✅ Entry: Green candles with +1% momentum</div>
               <div style="margin-bottom: 5px;">✅ Red candle filter (avoid dumps)</div>
-              <div>✅ Let profits run (no fixed TP caps)</div>
+              <div style="margin-bottom: 5px;">✅ Trend filter (15m/30m confirmation)</div>
+              <div>🛑 <strong>Circuit breaker:</strong> 3 losses / 15% drawdown</div>
             </div>
           </div>
           
@@ -563,7 +603,8 @@
       position: null,
       signal: null,
       trades: [],
-      stats: { wins: 0, losses: 0, totalPnl: 0 }
+      stats: { wins: 0, losses: 0, totalPnl: 0 },
+      circuitBreaker: { active: false, consecutiveLosses: 0, sessionDrawdown: 0, cooldownRemaining: 0 }
     };
     
     // Connect to WebSocket
@@ -644,6 +685,60 @@
       document.getElementById('winRate').textContent = `${winRate}%`;
       document.getElementById('totalTrades').textContent = totalTrades;
       document.getElementById('totalPnl').textContent = `${botState.stats.totalPnl > 0 ? '+' : ''}${botState.stats.totalPnl.toFixed(2)}%`;
+      
+      // Update circuit breaker (NEW 2026-02-19)
+      const cbCard = document.getElementById('circuitBreakerCard');
+      const cbStatus = document.getElementById('circuitBreakerStatus');
+      const cb = botState.circuitBreaker || {};
+      
+      if (cb.active || cb.consecutiveLosses > 0 || cb.sessionDrawdown > 5) {
+        // Show circuit breaker card if active or approaching limits
+        cbCard.style.display = 'block';
+        
+        // Update status section
+        if (cb.active) {
+          cbStatus.style.background = 'rgba(239, 68, 68, 0.1)';
+          cbStatus.style.borderLeft = '3px solid #ef4444';
+          cbStatus.querySelector('div').innerHTML = '🛑 CIRCUIT BREAKER ACTIVE';
+          cbStatus.querySelector('div').style.color = '#ef4444';
+          document.getElementById('circuitBreakerReason').textContent = cb.trippedReason || '3 consecutive losses';
+          document.getElementById('circuitBreakerCooldown').textContent = `${cb.cooldownRemaining || 0} min`;
+        } else {
+          cbStatus.style.background = 'rgba(251, 191, 36, 0.1)';
+          cbStatus.style.borderLeft = '3px solid #f59e0b';
+          cbStatus.querySelector('div').innerHTML = '⚠️ CIRCUIT BREAKER MONITORING';
+          cbStatus.querySelector('div').style.color = '#f59e0b';
+          document.getElementById('circuitBreakerReason').textContent = 'Monitoring session health';
+          document.getElementById('circuitBreakerCooldown').textContent = 'N/A';
+        }
+        
+        // Update metrics
+        document.getElementById('sessionDrawdown').textContent = `${cb.sessionDrawdown ? cb.sessionDrawdown.toFixed(1) : '0.0'}%`;
+        document.getElementById('consecutiveLosses').textContent = cb.consecutiveLosses || 0;
+        
+        // Color code based on severity
+        const ddElement = document.getElementById('sessionDrawdown');
+        const lossElement = document.getElementById('consecutiveLosses');
+        
+        if (cb.sessionDrawdown >= 15) {
+          ddElement.style.color = '#ef4444';
+        } else if (cb.sessionDrawdown >= 10) {
+          ddElement.style.color = '#f59e0b';
+        } else {
+          ddElement.style.color = '#4ade80';
+        }
+        
+        if (cb.consecutiveLosses >= 3) {
+          lossElement.style.color = '#ef4444';
+        } else if (cb.consecutiveLosses >= 2) {
+          lossElement.style.color = '#f59e0b';
+        } else {
+          lossElement.style.color = '#4ade80';
+        }
+      } else {
+        // Hide circuit breaker card if not relevant
+        cbCard.style.display = 'none';
+      }
       
       // Update trades table
       updateTradesTable();

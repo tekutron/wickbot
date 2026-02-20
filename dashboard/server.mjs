@@ -30,7 +30,17 @@ let botState = {
   position: null,
   signal: null,
   trades: [],
-  stats: { wins: 0, losses: 0, totalPnl: 0 }
+  stats: { wins: 0, losses: 0, totalPnl: 0 },
+  // Circuit Breaker (NEW 2026-02-19)
+  circuitBreaker: {
+    active: false,
+    consecutiveLosses: 0,
+    sessionStartCapital: 0,
+    currentCapital: 0,
+    sessionDrawdown: 0,
+    cooldownRemaining: 0,
+    trippedReason: null
+  }
 };
 
 // HTTP server for static files + API
@@ -400,6 +410,30 @@ function loadState() {
     if (fs.existsSync(path.join(__dirname, stateFile))) {
       const state = JSON.parse(fs.readFileSync(path.join(__dirname, stateFile), 'utf8'));
       botState.position = state.positions?.[0] || null;
+      
+      // Load circuit breaker state (NEW 2026-02-19)
+      if (state.circuitBreakerTripped !== undefined) {
+        botState.circuitBreaker.active = state.circuitBreakerTripped || false;
+        botState.circuitBreaker.consecutiveLosses = state.consecutiveLosses || 0;
+        botState.circuitBreaker.sessionStartCapital = state.sessionStartCapital || state.startingCapital || 0;
+        botState.circuitBreaker.currentCapital = state.currentCapital || 0;
+        
+        // Calculate session drawdown
+        const sessionDD = state.sessionStartCapital > 0 
+          ? ((state.sessionStartCapital - state.currentCapital) / state.sessionStartCapital) * 100 
+          : 0;
+        botState.circuitBreaker.sessionDrawdown = sessionDD;
+        
+        // Calculate cooldown remaining
+        if (state.circuitBreakerTripped && state.circuitBreakerTime) {
+          const elapsed = Date.now() - state.circuitBreakerTime;
+          const cooldownMs = (30) * 60 * 1000; // 30 minutes in ms
+          const remaining = Math.max(0, Math.ceil((cooldownMs - elapsed) / 1000 / 60));
+          botState.circuitBreaker.cooldownRemaining = remaining;
+        } else {
+          botState.circuitBreaker.cooldownRemaining = 0;
+        }
+      }
     }
     
     const tradesFile = '../wickbot_trades.json';
