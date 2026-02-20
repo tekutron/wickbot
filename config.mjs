@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
-  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
+  CUSTOM_TOKEN_ADDRESS: '9r1U43rsLHYNng9mZQ7jxLXAzdhXfmecwoQzjXhzpump',
+  CUSTOM_TOKEN_SYMBOL: 'fartbutt',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -21,10 +21,10 @@ export const config = {
   // Transaction Settings (2026-02-19 FEE OPTIMIZATION)
   PRIORITY_FEE_LAMPORTS: 100000,  // 0.0001 SOL priority fee (90% reduction - still prioritized)
   
-  // Slippage Protection (2026-02-19 ADAPTIVE SLIPPAGE)
-  SLIPPAGE_PROFIT_BPS: 200,       // 2% max slippage on profitable exits (protect gains)
-  SLIPPAGE_SMALL_LOSS_BPS: 300,   // 3% max slippage on small losses (try to minimize)
-  SLIPPAGE_BIG_LOSS_BPS: 1000,    // 10% max slippage on big losses (emergency exit)
+  // Slippage Protection (2026-02-19 FLAT 5% SLIPPAGE)
+  SLIPPAGE_PROFIT_BPS: 500,       // 5% max slippage on profitable exits
+  SLIPPAGE_SMALL_LOSS_BPS: 500,   // 5% max slippage on small losses
+  SLIPPAGE_BIG_LOSS_BPS: 500,     // 5% max slippage on big losses
   SLIPPAGE_THRESHOLD_PCT: -5,     // Threshold for "big loss" vs "small loss"
   
   // Pre-Flight Price Check (2026-02-19 EXECUTION PROTECTION)
