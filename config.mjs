@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '67ezHLk8PUkjJCXjmmgPbx85VowA52ghfRXa9A8Tpump',
-  CUSTOM_TOKEN_SYMBOL: 'GROKIUS',
+  CUSTOM_TOKEN_ADDRESS: 'AVF9F4C4j8b1Kh4BmNHqybDaHgnZpJ7W7yLvL7hUpump',
+  CUSTOM_TOKEN_SYMBOL: 'Lobstar',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.085845,    // Updated after failed session: 0.0858 SOL (2026-02-19 17:11)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 25,        // 25% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 75,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!
@@ -72,12 +72,12 @@ export const config = {
   MIN_BUY_CONFIDENCE: 50,       // Need 3/6 conditions (50% = 3 out of 6) - catches dips faster
   MIN_SELL_CONFIDENCE: 50,      // Need 3/5 conditions (50% = 3 out of 5) - exits tops faster
   
-  // Entry confirmation (2026-02-19 MOMENTUM-BASED) - Buy strength, avoid dumps
+  // Entry confirmation (2026-02-20 TIGHTENED) - Buy strength, avoid dumps
   REQUIRE_ENTRY_CONFIRMATION: true,   // Momentum + volume confirmation
   MIN_CANDLE_BODY_POSITIVE: -2.0,     // Reject if recent candle red <-2% (avoid dumps)
-  MIN_MOMENTUM_1M: 1.0,               // Require +1% 1m momentum (sustained bullish, not just bounces)
-  MIN_MOMENTUM_5M: 0.5,               // Require +0.5% 5m momentum (trend confirmation)
-  MIN_VOLUME_RATIO: 2.0,              // Require 2x average volume for entry
+  MIN_MOMENTUM_1M: 2.0,               // Require +2% 1m momentum (STRONGER signals only - was 1.0)
+  MIN_MOMENTUM_5M: 1.0,               // Require +1% 5m momentum (trend confirmation - was 0.5)
+  MIN_VOLUME_RATIO: 3.0,              // Require 3x average volume for entry (BIG spikes only - was 2.0)
   
   // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
   REQUIRE_TREND_FILTER: true,         // Check 15m/30m trend before entry
