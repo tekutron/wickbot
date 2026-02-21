@@ -7,15 +7,15 @@ export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (User selected token - 2026-02-20 PM)
   CUSTOM_TOKEN_ADDRESS: 'AVF9F4C4j8b1Kh4BmNHqybDaHgnZpJ7W7yLvL7hUpump',
-  CUSTOM_TOKEN_SYMBOL: 'UNKNOWN',  // Will be detected
+  CUSTOM_TOKEN_SYMBOL: 'Lobstar',  // Will be detected
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.085845,    // Updated after failed session: 0.0858 SOL (2026-02-19 17:11)
+  STARTING_CAPITAL_SOL: 0.057785,    // Reset 2026-02-21 (was 0.085845, -32.7% drawdown hit circuit breaker)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 75,        // 25% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 55,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!

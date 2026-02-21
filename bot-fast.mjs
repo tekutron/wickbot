@@ -96,7 +96,7 @@ class WickBotFast {
     console.log(`📈 Update Frequency: Every ${config.POLL_INTERVAL_MS / 1000}s`);
     console.log(`🎯 Position Size: ${config.POSITION_SIZE_PCT}% (~${(balance.sol * config.POSITION_SIZE_PCT / 100).toFixed(4)} SOL)`);
     console.log(`⚡ Quick Exit: +${config.QUICK_TP_1}%/+${config.QUICK_TP_2}% | -${config.QUICK_SL}% | ${config.MAX_HOLD_TIME_SEC}s max`);
-    console.log(`💸 Priority Fee: ${(config.PRIORITY_FEE_LAMPORTS / 1000000).toFixed(4)} SOL (optimized for micro-scalp)`);
+    console.log(`💸 Priority Fee: ${(config.PRIORITY_FEE_LAMPORTS / 1000000000).toFixed(5)} SOL (optimized for micro-scalp)`);
     console.log(`📊 Signal Mode: Incremental (50x faster than old mode)`);
     
     if (config.DRY_RUN) {
