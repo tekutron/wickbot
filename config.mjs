@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (User selected token - 2026-02-20 PM)
-  CUSTOM_TOKEN_ADDRESS: 'AVF9F4C4j8b1Kh4BmNHqybDaHgnZpJ7W7yLvL7hUpump',
-  CUSTOM_TOKEN_SYMBOL: 'Lobstar',  // Will be detected
+  CUSTOM_TOKEN_ADDRESS: 'B1Aeqi2Q8tv92W6G1makLWdsWb8c4gdJckJtjFmWpump',
+  CUSTOM_TOKEN_SYMBOL: 'Lobstefeller',  // Will be detected
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -79,19 +79,24 @@ export const config = {
   MIN_MOMENTUM_5M: 0.3,               // Require +0.3% 5m momentum (trend starting - was 1.0)
   MIN_VOLUME_RATIO: 1.5,              // Require 1.5x average volume (earlier detection - was 3.0)
   
-  // === ENTRY STRATEGY (NEW 2026-02-20 EVENING) ===
-  // MOMENTUM MODE: Catch pumps, not dips!
-  STRATEGY_MODE: 'momentum',          // NEW: Ride the wave up!
+  // === ENTRY STRATEGY (2026-02-21) ===
+  // SIMPLE MODE: Dip-buying with wick detection (GitHub proven)
+  STRATEGY_MODE: 'simple',            // Simple dip detection + wicks
   
-  // Momentum Strategy (Catch Pumps)
-  PUMP_THRESHOLD: 1.5,                // Buy when price UP ≥1.5%
-  VOLUME_THRESHOLD_MIN: 0.5,          // Ignore volume check (data unreliable)
-  MAX_PUMP: 15.0,                     // Don't buy if already pumped >15%
+  // Simple Strategy (Dip + Volume + Wicks)
+  DIP_THRESHOLD: -2.5,                // Buy on -2.5% dip
+  VOLUME_THRESHOLD: 1.5,              // Require 1.5x volume spike
+  CRASH_FILTER: -10.0,                // Reject if >-10% crash
   
-  // Backup strategies (disabled)
-  DIP_THRESHOLD: -1.5,                // (old)
-  VOLUME_THRESHOLD: 1.5,              // (old)
-  CRASH_FILTER: -10.0,                // (old)
+  // Wick Detection (wickbot signature feature)
+  REQUIRE_BULLISH_WICK: true,         // Require long lower wick (buying pressure)
+  MIN_LOWER_WICK_RATIO: 0.3,          // Lower wick ≥30% of total range
+  MAX_UPPER_WICK_RATIO: 0.5,          // Upper wick ≤50% of total range
+  
+  // Momentum Strategy (backup - disabled)
+  PUMP_THRESHOLD: 1.5,                // (backup)
+  VOLUME_THRESHOLD_MIN: 0.5,          // (backup)
+  MAX_PUMP: 15.0,                     // (backup)
   
   // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
   REQUIRE_TREND_FILTER: true,         // Check 15m/30m trend before entry
