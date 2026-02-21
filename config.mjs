@@ -83,9 +83,9 @@ export const config = {
   // Mode: 'hybrid', 'simple', 'volume' - for A/B/C testing
   STRATEGY_MODE: 'hybrid',            // Start with hybrid (10 trades)
   
-  // Hybrid Strategy (Dip + Volume + Safety)
-  DIP_THRESHOLD: -2.5,                // Buy on -2.5% dip or more
-  VOLUME_THRESHOLD: 2.5,              // Volume must be 2.5x average
+  // Hybrid Strategy (Dip + Volume + Safety) - LOWERED for testing
+  DIP_THRESHOLD: -1.5,                // Buy on -1.5% dip or more (was -2.5)
+  VOLUME_THRESHOLD: 1.5,              // Volume must be 1.5x average (was 2.5)
   CRASH_FILTER: -10.0,                // Don't buy if 5m < -10% (crashing)
   
   // Simple Strategy (Just dip detection)
