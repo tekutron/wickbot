@@ -416,8 +416,19 @@ class WickBotFast {
       }
       
       if (result.success) {
-        // CRITICAL: Fetch ACTUAL token balance from blockchain (not Jupiter quote)
-        // Jupiter quotes can differ from actual due to slippage
+        // CRITICAL FIX (2026-02-21): Wait for confirmation BEFORE checking balance
+        console.log(`   ⏳ Waiting for transaction confirmation...`);
+        try {
+          await this.connection.confirmTransaction(result.signature, 'confirmed');
+          console.log(`   ✅ Transaction confirmed on-chain`);
+          
+          // Buffer for balance propagation
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (confirmErr) {
+          console.error(`   ⚠️  Confirmation failed: ${confirmErr.message}`);
+        }
+        
+        // NOW fetch actual token balance (after confirmation)
         if (config.isCustomTokenMode()) {
           const actualBalance = await this.getActualTokenBalance(config.CUSTOM_TOKEN_ADDRESS);
           if (actualBalance) {
