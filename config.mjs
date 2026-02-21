@@ -6,8 +6,8 @@
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
   // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: 'atgHj7yDwymzDtzMeFQBrYXLNxx3bozXKQgua97pump',
-  CUSTOM_TOKEN_SYMBOL: 'Komomo',
+  CUSTOM_TOKEN_ADDRESS: '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump',
+  CUSTOM_TOKEN_SYMBOL: 'Fartcoin',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.085845,    // Updated after failed session: 0.0858 SOL (2026-02-19 17:11)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 50,        // 25% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 75,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!
