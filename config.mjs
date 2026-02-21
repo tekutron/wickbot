@@ -12,7 +12,7 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.057785,    // Reset 2026-02-21 (was 0.085845, -32.7% drawdown hit circuit breaker)
+  STARTING_CAPITAL_SOL: 0.024237,    // Reset 2026-02-21 3:45PM (-58% from stuck 0-token position bug)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 55,        // 25% per trade (conservative risk management)
