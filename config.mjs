@@ -5,9 +5,9 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
-  // Custom Token Trading (Fartcoin - verified working earlier - 2026-02-20 PM)
-  CUSTOM_TOKEN_ADDRESS: '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump',
-  CUSTOM_TOKEN_SYMBOL: 'Fartcoin',
+  // Custom Token Trading (JUP - Jupiter DEX token, $292K liq, verified API - 2026-02-20 PM)
+  CUSTOM_TOKEN_ADDRESS: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+  CUSTOM_TOKEN_SYMBOL: 'JUP',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
