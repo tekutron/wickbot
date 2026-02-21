@@ -5,7 +5,7 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
-  // Custom Token Trading (Fartcoin - verified working - 2026-02-20)
+  // Custom Token Trading (Fartcoin - verified working earlier - 2026-02-20 PM)
   CUSTOM_TOKEN_ADDRESS: '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump',
   CUSTOM_TOKEN_SYMBOL: 'Fartcoin',
 
