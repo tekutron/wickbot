@@ -5,9 +5,9 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
-  // Custom Token Trading (JUP - Jupiter DEX token, $292K liq, verified API - 2026-02-20 PM)
-  CUSTOM_TOKEN_ADDRESS: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
-  CUSTOM_TOKEN_SYMBOL: 'JUP',
+  // Custom Token Trading (User selected token - 2026-02-20 PM)
+  CUSTOM_TOKEN_ADDRESS: 'AVF9F4C4j8b1Kh4BmNHqybDaHgnZpJ7W7yLvL7hUpump',
+  CUSTOM_TOKEN_SYMBOL: 'UNKNOWN',  // Will be detected
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
@@ -80,10 +80,20 @@ export const config = {
   MIN_VOLUME_RATIO: 1.5,              // Require 1.5x average volume (earlier detection - was 3.0)
   
   // === ENTRY STRATEGY (NEW 2026-02-20 EVENING) ===
-  // Simplified from GitHub bot research: Dip + Volume + Safety
+  // Mode: 'hybrid', 'simple', 'volume' - for A/B/C testing
+  STRATEGY_MODE: 'hybrid',            // Start with hybrid (10 trades)
+  
+  // Hybrid Strategy (Dip + Volume + Safety)
   DIP_THRESHOLD: -2.5,                // Buy on -2.5% dip or more
   VOLUME_THRESHOLD: 2.5,              // Volume must be 2.5x average
   CRASH_FILTER: -10.0,                // Don't buy if 5m < -10% (crashing)
+  
+  // Simple Strategy (Just dip detection)
+  SIMPLE_DIP_THRESHOLD: -2.5,         // Buy on -2.5% dip
+  
+  // Volume Strategy (Volume spike + small dip)
+  VOLUME_SPIKE_THRESHOLD: 3.0,        // Volume 3x average
+  VOLUME_DIP_THRESHOLD: -1.0,         // With -1% dip
   
   // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
   REQUIRE_TREND_FILTER: true,         // Check 15m/30m trend before entry

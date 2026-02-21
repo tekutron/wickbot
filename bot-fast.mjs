@@ -297,8 +297,8 @@ class WickBotFast {
       return;
     }
     
-    // === ENTRY CONFIRMATION (2026-02-20 EVENING - Simplified) ===
-    // Strategy: Dip + Volume + Safety (from GitHub bot research)
+    // === ENTRY CONFIRMATION (2026-02-20 EVENING - Multi-Strategy Testing) ===
+    console.log(`   🎯 Strategy Mode: ${config.STRATEGY_MODE.toUpperCase()}`);
     
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
       const candles = this.incrementalEngine?.candles || [];
@@ -311,11 +311,11 @@ class WickBotFast {
       const lastCandle = candles[candles.length - 1];
       const currentPrice = lastCandle.close;
       
-      // Calculate 1m momentum (last 3 candles = ~1 min at 20s each)
+      // Calculate 1m momentum
       const priceAgo1m = candles[candles.length - 3].close;
       const momentum1m = ((currentPrice - priceAgo1m) / priceAgo1m) * 100;
       
-      // Calculate 5m momentum (last 10 candles = ~5 min)
+      // Calculate 5m momentum
       const priceAgo5m = candles[candles.length - 10].close;
       const momentum5m = ((currentPrice - priceAgo5m) / priceAgo5m) * 100;
       
@@ -324,22 +324,50 @@ class WickBotFast {
         ? signal.volume5m / signal.volume1hAvg 
         : 0;
       
-      // Check all 3 conditions
-      const dipOk = momentum1m <= config.DIP_THRESHOLD;
-      const volumeOk = volumeRatio >= config.VOLUME_THRESHOLD;
-      const notCrashing = momentum5m > config.CRASH_FILTER;
+      // === STRATEGY SELECTION ===
+      let passed = false;
       
-      console.log(`   📊 Entry Check: Dip + Volume + Safety`);
-      console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need ≤${config.DIP_THRESHOLD}%)`);
-      console.log(`   ${volumeOk ? '✅' : '❌'} Volume: ${volumeRatio.toFixed(2)}x (need ≥${config.VOLUME_THRESHOLD}x)`);
-      console.log(`   ${notCrashing ? '✅' : '❌'} 5m trend: ${momentum5m.toFixed(2)}% (not crashing if >${config.CRASH_FILTER}%)`);
+      if (config.STRATEGY_MODE === 'hybrid') {
+        // HYBRID: Dip + Volume + Safety
+        const dipOk = momentum1m <= config.DIP_THRESHOLD;
+        const volumeOk = volumeRatio >= config.VOLUME_THRESHOLD;
+        const notCrashing = momentum5m > config.CRASH_FILTER;
+        
+        console.log(`   📊 Hybrid: Dip + Volume + Safety`);
+        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need ≤${config.DIP_THRESHOLD}%)`);
+        console.log(`   ${volumeOk ? '✅' : '❌'} Volume: ${volumeRatio.toFixed(2)}x (need ≥${config.VOLUME_THRESHOLD}x)`);
+        console.log(`   ${notCrashing ? '✅' : '❌'} Safety: ${momentum5m.toFixed(2)}% (>${config.CRASH_FILTER}%)`);
+        
+        passed = dipOk && volumeOk && notCrashing;
+        
+      } else if (config.STRATEGY_MODE === 'simple') {
+        // SIMPLE: Just dip detection
+        const dipOk = momentum1m <= config.SIMPLE_DIP_THRESHOLD && volumeRatio >= 1.5;
+        
+        console.log(`   📊 Simple: Dip Detection Only`);
+        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% with ${volumeRatio.toFixed(2)}x vol`);
+        console.log(`   (need ≤${config.SIMPLE_DIP_THRESHOLD}% + ≥1.5x volume)`);
+        
+        passed = dipOk;
+        
+      } else if (config.STRATEGY_MODE === 'volume') {
+        // VOLUME: Volume spike + small dip
+        const spikeOk = volumeRatio >= config.VOLUME_SPIKE_THRESHOLD;
+        const dipOk = momentum1m < config.VOLUME_DIP_THRESHOLD;
+        
+        console.log(`   📊 Volume: Spike Detection`);
+        console.log(`   ${spikeOk ? '✅' : '❌'} Spike: ${volumeRatio.toFixed(2)}x (need ≥${config.VOLUME_SPIKE_THRESHOLD}x)`);
+        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need <${config.VOLUME_DIP_THRESHOLD}%)`);
+        
+        passed = spikeOk && dipOk;
+      }
       
-      if (!dipOk || !volumeOk || !notCrashing) {
-        console.log(`   ⏸️  Waiting for better setup...\n`);
+      if (!passed) {
+        console.log(`   ⏸️  Waiting for setup...\n`);
         return;
       }
       
-      console.log(`   ✅ All checks passed!`);
+      console.log(`   ✅ Entry confirmed!`);
     }
     
     const positionSize = this.positionManager.getPositionSize();
