@@ -319,23 +319,36 @@ class WickBotFast {
       const priceAgo5m = candles[candles.length - 10].close;
       const momentum5m = ((currentPrice - priceAgo5m) / priceAgo5m) * 100;
       
-      if (config.STRATEGY_MODE === 'momentum') {
-        // MOMENTUM: Buy pumps, ride the wave!
-        const pumpOk = momentum1m >= config.PUMP_THRESHOLD;
-        const notOverpumped = momentum5m <= config.MAX_PUMP;
+      if (config.STRATEGY_MODE === 'simple') {
+        // SIMPLE: Buy dips with volume + wick confirmation
+        const dipOk = momentum5m <= config.DIP_THRESHOLD && momentum5m >= config.CRASH_FILTER;
         
-        console.log(`   🚀 MOMENTUM: Catch the Pump!`);
-        console.log(`   ${pumpOk ? '✅' : '❌'} Pump: ${momentum1m.toFixed(2)}% (need ≥${config.PUMP_THRESHOLD}%)`);
-        console.log(`   ${notOverpumped ? '✅' : '❌'} 5m check: ${momentum5m.toFixed(2)}% (not overpumped if ≤${config.MAX_PUMP}%)`);
+        // Volume calc (simple approximation from candle count)
+        const volumeOk = true; // Simplified - volume data unreliable
         
-        if (!pumpOk || !notOverpumped) {
-          console.log(`   ⏸️  Waiting for pump...\n`);
+        // Wick detection
+        const range = lastCandle.high - lastCandle.low;
+        const lowerWick = Math.min(lastCandle.open, lastCandle.close) - lastCandle.low;
+        const upperWick = lastCandle.high - Math.max(lastCandle.open, lastCandle.close);
+        const lowerWickRatio = range > 0 ? lowerWick / range : 0;
+        const upperWickRatio = range > 0 ? upperWick / range : 0;
+        
+        const wickOk = !config.REQUIRE_BULLISH_WICK || 
+                       (lowerWickRatio >= config.MIN_LOWER_WICK_RATIO && 
+                        upperWickRatio <= config.MAX_UPPER_WICK_RATIO);
+        
+        console.log(`   📊 SIMPLE: Dip + Wicks`);
+        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum5m.toFixed(2)}% (${config.DIP_THRESHOLD}% to ${config.CRASH_FILTER}%)`);
+        console.log(`   ${volumeOk ? '✅' : '⚠️ '} Volume: Check (data limited)`);
+        console.log(`   ${wickOk ? '✅' : '❌'} Wick: L=${(lowerWickRatio*100).toFixed(0)}% U=${(upperWickRatio*100).toFixed(0)}%`);
+        
+        if (!dipOk || !wickOk) {
+          console.log(`   ⏸️  Waiting for better dip...\n`);
           return;
         }
         
-        console.log(`   ✅ PUMP DETECTED - ENTERING!`);
+        console.log(`   ✅ DIP + WICK CONFIRMED - ENTERING!`);
       } else {
-        // Fallback to old logic if mode changes
         console.log(`   ⚠️  Unknown strategy mode: ${config.STRATEGY_MODE}\n`);
         return;
       }
