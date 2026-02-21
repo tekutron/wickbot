@@ -24,8 +24,8 @@ export const config = {
   MAX_LOSS_PER_TRADE_PCT: 5,          // Emergency exit if loss >5% (safety net)
   COOLDOWN_AFTER_STOP_MIN: 30,        // Wait 30min before allowing restart
   
-  // Transaction Settings (2026-02-19 FEE OPTIMIZATION)
-  PRIORITY_FEE_LAMPORTS: 100000,  // 0.0001 SOL priority fee (90% reduction - still prioritized)
+  // Transaction Settings (2026-02-20 FEE OPTIMIZATION v2)
+  PRIORITY_FEE_LAMPORTS: 50000,  // 0.00005 SOL priority fee (50% further reduction - micro-scalp optimization)
   
   // Slippage Protection (2026-02-19 FLAT 5% SLIPPAGE)
   SLIPPAGE_PROFIT_BPS: 500,       // 5% max slippage on profitable exits
