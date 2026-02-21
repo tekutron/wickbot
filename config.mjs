@@ -80,20 +80,18 @@ export const config = {
   MIN_VOLUME_RATIO: 1.5,              // Require 1.5x average volume (earlier detection - was 3.0)
   
   // === ENTRY STRATEGY (NEW 2026-02-20 EVENING) ===
-  // Mode: 'hybrid', 'simple', 'volume' - for A/B/C testing
-  STRATEGY_MODE: 'hybrid',            // Start with hybrid (10 trades)
+  // MOMENTUM MODE: Catch pumps, not dips!
+  STRATEGY_MODE: 'momentum',          // NEW: Ride the wave up!
   
-  // Hybrid Strategy (Dip + Volume + Safety) - LOWERED for testing
-  DIP_THRESHOLD: -1.5,                // Buy on -1.5% dip or more (was -2.5)
-  VOLUME_THRESHOLD: 1.5,              // Volume must be 1.5x average (was 2.5)
-  CRASH_FILTER: -10.0,                // Don't buy if 5m < -10% (crashing)
+  // Momentum Strategy (Catch Pumps)
+  PUMP_THRESHOLD: 1.5,                // Buy when price UP ≥1.5%
+  VOLUME_THRESHOLD_MIN: 0.5,          // Ignore volume check (data unreliable)
+  MAX_PUMP: 15.0,                     // Don't buy if already pumped >15%
   
-  // Simple Strategy (Just dip detection)
-  SIMPLE_DIP_THRESHOLD: -2.5,         // Buy on -2.5% dip
-  
-  // Volume Strategy (Volume spike + small dip)
-  VOLUME_SPIKE_THRESHOLD: 3.0,        // Volume 3x average
-  VOLUME_DIP_THRESHOLD: -1.0,         // With -1% dip
+  // Backup strategies (disabled)
+  DIP_THRESHOLD: -1.5,                // (old)
+  VOLUME_THRESHOLD: 1.5,              // (old)
+  CRASH_FILTER: -10.0,                // (old)
   
   // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
   REQUIRE_TREND_FILTER: true,         // Check 15m/30m trend before entry
