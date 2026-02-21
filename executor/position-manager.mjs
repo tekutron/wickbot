@@ -79,33 +79,73 @@ export class PositionManager {
     };
   }
   
-  async updateCapitalFromChain() {
+  async updateCapitalFromChain(retries = 3) {
     try {
+      // DEBUG: Log before fetching balance
+      const beforeCapital = this.currentCapital;
+      
       const balance = await this.getBalance();
       
-      // For custom token trading (TOKEN/SOL), track SOL balance
-      // For SOL/USDC trading, track USDC balance
+      // DEBUG: Log raw balance returned
+      console.log(`[DEBUG] getBalance() returned:`, {
+        sol: balance.sol,
+        usdc: balance.usdc,
+        customTokenMode: config.isCustomTokenMode(),
+        activeWallet: config.ACTIVE_WALLET
+      });
+      
+      // ALWAYS use SOL balance for custom token mode (TOKEN/SOL pairs)
+      // We hold SOL between trades, not USDC or custom tokens
       if (config.isCustomTokenMode()) {
-        // Custom token mode: Always track SOL (since we trade TOKEN/SOL)
         this.currentCapital = balance.sol;
+        console.log(`[DEBUG] Custom token mode: Using SOL balance ${balance.sol}`);
       } else if (config.ACTIVE_WALLET === 'USDC') {
-        // SOL/USDC mode: Track USDC
+        // Legacy SOL/USDC mode: Track USDC
         this.currentCapital = balance.usdc / 86; // Convert USDC to SOL equivalent
+        console.log(`[DEBUG] USDC mode: Using USDC balance ${balance.usdc} → ${this.currentCapital} SOL equiv`);
       } else {
         // SOL wallet mode: Track SOL
         this.currentCapital = balance.sol;
+        console.log(`[DEBUG] SOL mode: Using SOL balance ${balance.sol}`);
       }
       
+      // Validation: Ensure balance is reasonable
       if (this.currentCapital === null || this.currentCapital === undefined || isNaN(this.currentCapital)) {
-        console.error('⚠️  WARNING: currentCapital is invalid:', this.currentCapital);
-        console.error('   Balance:', balance);
+        console.error('⚠️  CRITICAL: currentCapital is invalid:', this.currentCapital);
+        console.error('   Raw balance:', balance);
+        console.error('   Mode:', config.isCustomTokenMode() ? 'custom' : config.ACTIVE_WALLET);
+        
         // Fallback: use SOL balance directly
         this.currentCapital = balance.sol || this.startingCapital;
+        console.error('   Using fallback:', this.currentCapital);
       }
+      
+      // Sanity check: Detect massive unexpected changes (>50% in one update)
+      if (beforeCapital > 0) {
+        const change = Math.abs((this.currentCapital - beforeCapital) / beforeCapital) * 100;
+        if (change > 50) {
+          console.error(`🚨 SUSPICIOUS: Capital changed ${change.toFixed(1)}% in one update!`);
+          console.error(`   Before: ${beforeCapital.toFixed(6)} SOL`);
+          console.error(`   After: ${this.currentCapital.toFixed(6)} SOL`);
+          console.error(`   Raw balance:`, balance);
+          
+          // If change is suspicious, retry after delay
+          if (retries > 0) {
+            console.error(`   Retrying balance check... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return this.updateCapitalFromChain(retries - 1);
+          } else {
+            console.error(`   ⚠️  WARNING: Using potentially incorrect balance after retries`);
+          }
+        }
+      }
+      
+      console.log(`[DEBUG] Final currentCapital: ${this.currentCapital.toFixed(6)} SOL (was ${beforeCapital.toFixed(6)})`);
       
       this.saveState();
     } catch (err) {
       console.error('❌ updateCapitalFromChain failed:', err.message);
+      console.error('   Stack:', err.stack);
       // Keep existing capital value on error
     }
   }

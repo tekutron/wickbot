@@ -621,7 +621,21 @@ class WickBotFast {
       if (result && result.success) {
         this.positionManager.closePosition(position, currentPrice, result.signature, reason);
         
-        // CRITICAL: Refresh capital from blockchain after sell
+        // CRITICAL FIX (2026-02-20): Wait for transaction confirmation BEFORE updating balance
+        // Bug was: Balance updated immediately, SOL hadn't arrived yet, read stale/wrong balance
+        console.log(`   ⏳ Waiting for transaction confirmation...`);
+        try {
+          await this.positionManager.connection.confirmTransaction(result.signature, 'confirmed');
+          console.log(`   ✅ Transaction confirmed on-chain`);
+          
+          // Small additional delay to ensure balance propagates
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (confirmErr) {
+          console.error(`   ⚠️  Confirmation check failed: ${confirmErr.message}`);
+          console.error(`   Proceeding anyway, but balance may be stale...`);
+        }
+        
+        // NOW refresh capital from blockchain (after confirmation)
         await this.positionManager.updateCapitalFromChain();
         const newBalance = this.positionManager.currentCapital;
         
