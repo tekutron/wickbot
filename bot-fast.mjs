@@ -297,113 +297,49 @@ class WickBotFast {
       return;
     }
     
-    // === MULTI-STRATEGY ENTRY CONFIRMATION (2026-02-20 EVENING) ===
-    console.log(`   🎯 Strategy: ${config.STRATEGY_MODE.toUpperCase()}`);
+    // === ENTRY CONFIRMATION (2026-02-20 EVENING - Simplified) ===
+    // Strategy: Dip + Volume + Safety (from GitHub bot research)
     
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
       const candles = this.incrementalEngine?.candles || [];
       
-      if (candles.length < 3) {
+      if (candles.length < 10) {
         console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping\n`);
         return;
       }
       
       const lastCandle = candles[candles.length - 1];
       const currentPrice = lastCandle.close;
-      const priceAgo = candles[candles.length - 3].close;
-      const momentum1m = ((currentPrice - priceAgo) / priceAgo) * 100;
       
-      // Calculate 5m momentum for crash filter
-      let momentum5m = 0;
-      if (candles.length >= 10) {
-        const price5mAgo = candles[candles.length - 10].close;
-        momentum5m = ((currentPrice - price5mAgo) / price5mAgo) * 100;
-      }
+      // Calculate 1m momentum (last 3 candles = ~1 min at 20s each)
+      const priceAgo1m = candles[candles.length - 3].close;
+      const momentum1m = ((currentPrice - priceAgo1m) / priceAgo1m) * 100;
+      
+      // Calculate 5m momentum (last 10 candles = ~5 min)
+      const priceAgo5m = candles[candles.length - 10].close;
+      const momentum5m = ((currentPrice - priceAgo5m) / priceAgo5m) * 100;
       
       // Get volume ratio
       const volumeRatio = signal.volume5m && signal.volume1hAvg 
         ? signal.volume5m / signal.volume1hAvg 
         : 0;
       
-      // === STRATEGY SELECTION ===
-      let passed = false;
+      // Check all 3 conditions
+      const dipOk = momentum1m <= config.DIP_THRESHOLD;
+      const volumeOk = volumeRatio >= config.VOLUME_THRESHOLD;
+      const notCrashing = momentum5m > config.CRASH_FILTER;
       
-      if (config.STRATEGY_MODE === 'simple') {
-        // STRATEGY 1: Simple % Logic (nakul91 style)
-        console.log(`   📊 Simple Strategy: Looking for ${config.SIMPLE_DIP_THRESHOLD}% dip`);
-        
-        if (momentum1m <= config.SIMPLE_DIP_THRESHOLD && volumeRatio >= 1.5) {
-          console.log(`   ✅ Dip detected: ${momentum1m.toFixed(2)}% with ${volumeRatio.toFixed(2)}x volume`);
-          passed = true;
-        } else {
-          console.log(`   ❌ No dip: momentum ${momentum1m.toFixed(2)}% (need ≤${config.SIMPLE_DIP_THRESHOLD}%)`);
-          console.log(`   ⏸️  Waiting for dip...\n`);
-        }
-        
-      } else if (config.STRATEGY_MODE === 'volume') {
-        // STRATEGY 2: Volume Spike Detection (Immutal0 style)
-        console.log(`   📊 Volume Strategy: Looking for ${config.VOLUME_SPIKE_THRESHOLD}x spike`);
-        
-        if (volumeRatio >= config.VOLUME_SPIKE_THRESHOLD && 
-            momentum1m < config.VOLUME_DIP_THRESHOLD) {
-          console.log(`   ✅ Volume spike: ${volumeRatio.toFixed(2)}x with ${momentum1m.toFixed(2)}% dip`);
-          passed = true;
-        } else {
-          console.log(`   ❌ No spike: ${volumeRatio.toFixed(2)}x volume (need ≥${config.VOLUME_SPIKE_THRESHOLD}x)`);
-          console.log(`   ⏸️  Waiting for accumulation...\n`);
-        }
-        
-      } else if (config.STRATEGY_MODE === 'hybrid') {
-        // STRATEGY 3: Hybrid (Best of Both)
-        console.log(`   📊 Hybrid Strategy: Dip + Volume + Safety`);
-        
-        const dipOk = momentum1m <= config.HYBRID_DIP_THRESHOLD;
-        const volumeOk = volumeRatio >= config.HYBRID_VOLUME_THRESHOLD;
-        const notCrashing = momentum5m > config.HYBRID_CRASH_FILTER;
-        
-        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need ≤${config.HYBRID_DIP_THRESHOLD}%)`);
-        console.log(`   ${volumeOk ? '✅' : '❌'} Volume: ${volumeRatio.toFixed(2)}x (need ≥${config.HYBRID_VOLUME_THRESHOLD}x)`);
-        console.log(`   ${notCrashing ? '✅' : '❌'} 5m trend: ${momentum5m.toFixed(2)}% (not crashing if >${config.HYBRID_CRASH_FILTER}%)`);
-        
-        if (dipOk && volumeOk && notCrashing) {
-          console.log(`   ✅ All checks passed!`);
-          passed = true;
-        } else {
-          console.log(`   ⏸️  Waiting for better setup...\n`);
-        }
-        
-      } else if (config.STRATEGY_MODE === 'rsi') {
-        // STRATEGY 4: Original RSI/MACD (kept for comparison)
-        console.log(`   📊 RSI/MACD Strategy: Original (conservative)`);
-        
-        const indicators = this.incrementalEngine?.getIndicators();
-        if (!indicators || !indicators.ready) {
-          console.log(`   ⚠️  Indicators not ready\n`);
-          return;
-        }
-        
-        const rsi = indicators.rsi;
-        const macd = indicators.macd;
-        
-        const rsiOk = rsi >= config.RSI_ENTRY_MIN && rsi <= config.RSI_ENTRY_MAX;
-        const macdOk = !config.MACD_CROSSOVER_REQUIRED || macd.histogram > 0;
-        const momentumOk = momentum1m > config.MIN_MOMENTUM_1M;
-        
-        console.log(`   ${rsiOk ? '✅' : '❌'} RSI: ${rsi.toFixed(1)} (need ${config.RSI_ENTRY_MIN}-${config.RSI_ENTRY_MAX})`);
-        console.log(`   ${macdOk ? '✅' : '❌'} MACD: ${macd.histogram.toFixed(4)} (need >0)`);
-        console.log(`   ${momentumOk ? '✅' : '❌'} Momentum: ${momentum1m.toFixed(2)}% (need >${config.MIN_MOMENTUM_1M}%)`);
-        
-        if (rsiOk && macdOk && momentumOk) {
-          console.log(`   ✅ All indicators aligned!`);
-          passed = true;
-        } else {
-          console.log(`   ⏸️  Waiting for RSI/MACD alignment...\n`);
-        }
+      console.log(`   📊 Entry Check: Dip + Volume + Safety`);
+      console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need ≤${config.DIP_THRESHOLD}%)`);
+      console.log(`   ${volumeOk ? '✅' : '❌'} Volume: ${volumeRatio.toFixed(2)}x (need ≥${config.VOLUME_THRESHOLD}x)`);
+      console.log(`   ${notCrashing ? '✅' : '❌'} 5m trend: ${momentum5m.toFixed(2)}% (not crashing if >${config.CRASH_FILTER}%)`);
+      
+      if (!dipOk || !volumeOk || !notCrashing) {
+        console.log(`   ⏸️  Waiting for better setup...\n`);
+        return;
       }
       
-      if (!passed) {
-        return; // Strategy rejected entry
-      }
+      console.log(`   ✅ All checks passed!`);
     }
     
     const positionSize = this.positionManager.getPositionSize();
