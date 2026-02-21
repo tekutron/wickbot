@@ -5,9 +5,9 @@
 
 export const config = {
   // Trading Pair & Capital (OPTIMIZED 2026-02-16)
-  // Custom Token Trading (switched back to fartbutt after WAR rug - 2026-02-19)
-  CUSTOM_TOKEN_ADDRESS: '9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump',
-  CUSTOM_TOKEN_SYMBOL: 'Fartcoin',
+  // Custom Token Trading (switched to pippin - high liquidity $13.9M - 2026-02-20)
+  CUSTOM_TOKEN_ADDRESS: '8wwcnqdzjcy5pt7akhupafknv2txca9sq6ybkgzlbvdt',
+  CUSTOM_TOKEN_SYMBOL: 'pippin',
 
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',

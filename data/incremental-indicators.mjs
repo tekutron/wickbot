@@ -268,7 +268,8 @@ export class IncrementalEngine {
       ema20: this.ema20.getValue(),
       ema50: this.ema50.getValue(),
       candle: this.lastCandle,
-      updateCount: this.updateCount
+      updateCount: this.updateCount,
+      ready: this.isReady()  // ✅ FIX: Add ready property (2026-02-20)
     };
   }
   
@@ -286,11 +287,11 @@ export class IncrementalEngine {
    * Check if ready for trading (all indicators initialized)
    */
   isReady() {
-    const ind = this.getIndicators();
-    return ind.rsi !== null && 
-           ind.bb !== null && 
-           ind.macd !== null && 
-           ind.ema20 !== null && 
-           ind.ema50 !== null;
+    // ✅ FIX: Don't call getIndicators() to avoid infinite recursion (2026-02-20)
+    return this.rsi.getValue() !== null && 
+           this.bb.getValue() !== null && 
+           this.macd.getValue() !== null && 
+           this.ema20.getValue() !== null && 
+           this.ema50.getValue() !== null;
   }
 }
