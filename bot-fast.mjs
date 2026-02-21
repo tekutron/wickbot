@@ -297,89 +297,113 @@ class WickBotFast {
       return;
     }
     
-    // ENTRY CONFIRMATION (2026-02-19 MOMENTUM-BASED)
+    // === MULTI-STRATEGY ENTRY CONFIRMATION (2026-02-20 EVENING) ===
+    console.log(`   🎯 Strategy: ${config.STRATEGY_MODE.toUpperCase()}`);
+    
     if (config.REQUIRE_ENTRY_CONFIRMATION) {
-      // Use candle data from incremental engine
       const candles = this.incrementalEngine?.candles || [];
       
       if (candles.length < 3) {
-        console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping confirmation\n`);
+        console.log(`   ⚠️  Not enough candle history (${candles.length}) - skipping\n`);
         return;
       }
       
-      // 1. RED CANDLE FILTER - Don't catch falling knives
       const lastCandle = candles[candles.length - 1];
-      const candleBody = ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100;
-      
-      if (candleBody < -2.0) {
-        console.log(`   🔴 Recent candle RED ${candleBody.toFixed(2)}% - avoiding dump`);
-        console.log(`   ⏸️  Waiting for green candle...\n`);
-        return;
-      }
-      
-      // 2. MOMENTUM CHECK - Calculate from recent candles
-      // Use last 3 candles to determine momentum (current vs 2 candles ago)
       const currentPrice = lastCandle.close;
       const priceAgo = candles[candles.length - 3].close;
-      const momentum = ((currentPrice - priceAgo) / priceAgo) * 100;
+      const momentum1m = ((currentPrice - priceAgo) / priceAgo) * 100;
       
-      if (momentum <= config.MIN_MOMENTUM_1M) {
-        console.log(`   📉 Momentum ${momentum.toFixed(2)}% - not bullish (need >${config.MIN_MOMENTUM_1M}%)`);
-        console.log(`   ⏸️  Waiting for positive momentum...\n`);
-        return;
+      // Calculate 5m momentum for crash filter
+      let momentum5m = 0;
+      if (candles.length >= 10) {
+        const price5mAgo = candles[candles.length - 10].close;
+        momentum5m = ((currentPrice - price5mAgo) / price5mAgo) * 100;
       }
-      console.log(`   ✅ Momentum confirmed: ${momentum.toFixed(2)}%`);
       
-      // 3. VOLUME SPIKE - Confirm buying pressure
-      if (signal.volume5m && signal.volume1hAvg) {
-        const volumeRatio = signal.volume5m / signal.volume1hAvg;
-        if (volumeRatio < config.MIN_VOLUME_RATIO) {
-          console.log(`   📊 Volume ratio ${volumeRatio.toFixed(2)}x too low (need ${config.MIN_VOLUME_RATIO}x)`);
-          console.log(`   ⏸️  Waiting for volume spike...\n`);
+      // Get volume ratio
+      const volumeRatio = signal.volume5m && signal.volume1hAvg 
+        ? signal.volume5m / signal.volume1hAvg 
+        : 0;
+      
+      // === STRATEGY SELECTION ===
+      let passed = false;
+      
+      if (config.STRATEGY_MODE === 'simple') {
+        // STRATEGY 1: Simple % Logic (nakul91 style)
+        console.log(`   📊 Simple Strategy: Looking for ${config.SIMPLE_DIP_THRESHOLD}% dip`);
+        
+        if (momentum1m <= config.SIMPLE_DIP_THRESHOLD && volumeRatio >= 1.5) {
+          console.log(`   ✅ Dip detected: ${momentum1m.toFixed(2)}% with ${volumeRatio.toFixed(2)}x volume`);
+          passed = true;
+        } else {
+          console.log(`   ❌ No dip: momentum ${momentum1m.toFixed(2)}% (need ≤${config.SIMPLE_DIP_THRESHOLD}%)`);
+          console.log(`   ⏸️  Waiting for dip...\n`);
+        }
+        
+      } else if (config.STRATEGY_MODE === 'volume') {
+        // STRATEGY 2: Volume Spike Detection (Immutal0 style)
+        console.log(`   📊 Volume Strategy: Looking for ${config.VOLUME_SPIKE_THRESHOLD}x spike`);
+        
+        if (volumeRatio >= config.VOLUME_SPIKE_THRESHOLD && 
+            momentum1m < config.VOLUME_DIP_THRESHOLD) {
+          console.log(`   ✅ Volume spike: ${volumeRatio.toFixed(2)}x with ${momentum1m.toFixed(2)}% dip`);
+          passed = true;
+        } else {
+          console.log(`   ❌ No spike: ${volumeRatio.toFixed(2)}x volume (need ≥${config.VOLUME_SPIKE_THRESHOLD}x)`);
+          console.log(`   ⏸️  Waiting for accumulation...\n`);
+        }
+        
+      } else if (config.STRATEGY_MODE === 'hybrid') {
+        // STRATEGY 3: Hybrid (Best of Both)
+        console.log(`   📊 Hybrid Strategy: Dip + Volume + Safety`);
+        
+        const dipOk = momentum1m <= config.HYBRID_DIP_THRESHOLD;
+        const volumeOk = volumeRatio >= config.HYBRID_VOLUME_THRESHOLD;
+        const notCrashing = momentum5m > config.HYBRID_CRASH_FILTER;
+        
+        console.log(`   ${dipOk ? '✅' : '❌'} Dip: ${momentum1m.toFixed(2)}% (need ≤${config.HYBRID_DIP_THRESHOLD}%)`);
+        console.log(`   ${volumeOk ? '✅' : '❌'} Volume: ${volumeRatio.toFixed(2)}x (need ≥${config.HYBRID_VOLUME_THRESHOLD}x)`);
+        console.log(`   ${notCrashing ? '✅' : '❌'} 5m trend: ${momentum5m.toFixed(2)}% (not crashing if >${config.HYBRID_CRASH_FILTER}%)`);
+        
+        if (dipOk && volumeOk && notCrashing) {
+          console.log(`   ✅ All checks passed!`);
+          passed = true;
+        } else {
+          console.log(`   ⏸️  Waiting for better setup...\n`);
+        }
+        
+      } else if (config.STRATEGY_MODE === 'rsi') {
+        // STRATEGY 4: Original RSI/MACD (kept for comparison)
+        console.log(`   📊 RSI/MACD Strategy: Original (conservative)`);
+        
+        const indicators = this.incrementalEngine?.getIndicators();
+        if (!indicators || !indicators.ready) {
+          console.log(`   ⚠️  Indicators not ready\n`);
           return;
         }
-        console.log(`   ✅ Volume confirmed: ${volumeRatio.toFixed(2)}x average`);
-      }
-      
-      // 4. RSI ENTRY FILTER (NEW 2026-02-20) - Enter on dips/oversold
-      if (config.REQUIRE_RSI_ENTRY) {
-        const indicators = this.incrementalEngine?.getIndicators();
-        if (indicators && indicators.ready) {
-          const rsi = indicators.rsi;
-          
-          if (rsi > config.RSI_ENTRY_MAX) {
-            console.log(`   📈 RSI ${rsi.toFixed(1)} too high (need <${config.RSI_ENTRY_MAX}) - not oversold`);
-            console.log(`   ⏸️  Waiting for RSI dip...\n`);
-            return;
-          }
-          
-          if (rsi < config.RSI_ENTRY_MIN) {
-            console.log(`   📉 RSI ${rsi.toFixed(1)} too low (<${config.RSI_ENTRY_MIN}) - might dump more`);
-            console.log(`   ⏸️  Waiting for RSI stabilization...\n`);
-            return;
-          }
-          
-          console.log(`   ✅ RSI confirmed: ${rsi.toFixed(1)} (oversold/neutral)`);
+        
+        const rsi = indicators.rsi;
+        const macd = indicators.macd;
+        
+        const rsiOk = rsi >= config.RSI_ENTRY_MIN && rsi <= config.RSI_ENTRY_MAX;
+        const macdOk = !config.MACD_CROSSOVER_REQUIRED || macd.histogram > 0;
+        const momentumOk = momentum1m > config.MIN_MOMENTUM_1M;
+        
+        console.log(`   ${rsiOk ? '✅' : '❌'} RSI: ${rsi.toFixed(1)} (need ${config.RSI_ENTRY_MIN}-${config.RSI_ENTRY_MAX})`);
+        console.log(`   ${macdOk ? '✅' : '❌'} MACD: ${macd.histogram.toFixed(4)} (need >0)`);
+        console.log(`   ${momentumOk ? '✅' : '❌'} Momentum: ${momentum1m.toFixed(2)}% (need >${config.MIN_MOMENTUM_1M}%)`);
+        
+        if (rsiOk && macdOk && momentumOk) {
+          console.log(`   ✅ All indicators aligned!`);
+          passed = true;
+        } else {
+          console.log(`   ⏸️  Waiting for RSI/MACD alignment...\n`);
         }
       }
       
-      // 5. MACD ENTRY FILTER (NEW 2026-02-20) - Detect momentum building
-      if (config.REQUIRE_MACD_ENTRY) {
-        const indicators = this.incrementalEngine?.getIndicators();
-        if (indicators && indicators.ready) {
-          const macd = indicators.macd;
-          
-          if (config.MACD_CROSSOVER_REQUIRED && macd.histogram <= 0) {
-            console.log(`   📉 MACD histogram ${macd.histogram.toFixed(4)} negative - momentum not building`);
-            console.log(`   ⏸️  Waiting for MACD crossover...\n`);
-            return;
-          }
-          
-          console.log(`   ✅ MACD confirmed: histogram ${macd.histogram.toFixed(4)} (bullish)`);
-        }
+      if (!passed) {
+        return; // Strategy rejected entry
       }
-      
-      console.log(`   ✅ Entry confirmed: ${candleBody >= 0 ? 'GREEN' : 'RED'} candle (${candleBody.toFixed(2)}%)`);
     }
     
     const positionSize = this.positionManager.getPositionSize();

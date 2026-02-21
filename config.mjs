@@ -79,13 +79,29 @@ export const config = {
   MIN_MOMENTUM_5M: 0.3,               // Require +0.3% 5m momentum (trend starting - was 1.0)
   MIN_VOLUME_RATIO: 1.5,              // Require 1.5x average volume (earlier detection - was 3.0)
   
-  // RSI Entry Filter (NEW 2026-02-20) - Enter on dips/oversold
-  REQUIRE_RSI_ENTRY: true,            // Use RSI to predict bounces
+  // === STRATEGY MODE (NEW 2026-02-20 EVENING) ===
+  // Options: 'simple', 'volume', 'hybrid', 'rsi' (original)
+  STRATEGY_MODE: 'hybrid',            // Which entry strategy to use
+  
+  // STRATEGY 1: Simple % Logic (nakul91 style)
+  SIMPLE_DIP_THRESHOLD: -2.5,         // Buy on -2.5% dip
+  SIMPLE_RISE_THRESHOLD: 2.5,         // Sell on +2.5% rise
+  
+  // STRATEGY 2: Volume Spike Detection (Immutal0 style)
+  VOLUME_SPIKE_THRESHOLD: 3.0,        // Volume must be 3x average
+  VOLUME_DIP_THRESHOLD: -1.0,         // With -1% price dip
+  
+  // STRATEGY 3: Hybrid (Best of Both)
+  HYBRID_DIP_THRESHOLD: -2.5,         // Dip percentage
+  HYBRID_VOLUME_THRESHOLD: 2.5,       // Volume spike
+  HYBRID_CRASH_FILTER: -10.0,         // Don't buy if 5m < -10% (crashing)
+  
+  // STRATEGY 4: RSI/MACD (Original - too conservative)
+  REQUIRE_RSI_ENTRY: false,           // DISABLED - too strict
   RSI_ENTRY_MAX: 45,                  // Only enter when RSI <45 (oversold/neutral)
   RSI_ENTRY_MIN: 25,                  // Don't enter if RSI <25 (too oversold, might dump more)
   
-  // MACD Entry Filter (NEW 2026-02-20) - Detect momentum building
-  REQUIRE_MACD_ENTRY: true,           // Use MACD for early momentum detection
+  REQUIRE_MACD_ENTRY: false,          // DISABLED - too strict
   MACD_CROSSOVER_REQUIRED: true,      // MACD line must be above signal line (bullish)
   
   // Trend Filter (NEW 2026-02-19 17:11) - Don't fight the trend
