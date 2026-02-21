@@ -341,6 +341,44 @@ class WickBotFast {
         console.log(`   ✅ Volume confirmed: ${volumeRatio.toFixed(2)}x average`);
       }
       
+      // 4. RSI ENTRY FILTER (NEW 2026-02-20) - Enter on dips/oversold
+      if (config.REQUIRE_RSI_ENTRY) {
+        const indicators = this.incrementalEngine?.getIndicators();
+        if (indicators && indicators.ready) {
+          const rsi = indicators.rsi;
+          
+          if (rsi > config.RSI_ENTRY_MAX) {
+            console.log(`   📈 RSI ${rsi.toFixed(1)} too high (need <${config.RSI_ENTRY_MAX}) - not oversold`);
+            console.log(`   ⏸️  Waiting for RSI dip...\n`);
+            return;
+          }
+          
+          if (rsi < config.RSI_ENTRY_MIN) {
+            console.log(`   📉 RSI ${rsi.toFixed(1)} too low (<${config.RSI_ENTRY_MIN}) - might dump more`);
+            console.log(`   ⏸️  Waiting for RSI stabilization...\n`);
+            return;
+          }
+          
+          console.log(`   ✅ RSI confirmed: ${rsi.toFixed(1)} (oversold/neutral)`);
+        }
+      }
+      
+      // 5. MACD ENTRY FILTER (NEW 2026-02-20) - Detect momentum building
+      if (config.REQUIRE_MACD_ENTRY) {
+        const indicators = this.incrementalEngine?.getIndicators();
+        if (indicators && indicators.ready) {
+          const macd = indicators.macd;
+          
+          if (config.MACD_CROSSOVER_REQUIRED && macd.histogram <= 0) {
+            console.log(`   📉 MACD histogram ${macd.histogram.toFixed(4)} negative - momentum not building`);
+            console.log(`   ⏸️  Waiting for MACD crossover...\n`);
+            return;
+          }
+          
+          console.log(`   ✅ MACD confirmed: histogram ${macd.histogram.toFixed(4)} (bullish)`);
+        }
+      }
+      
       console.log(`   ✅ Entry confirmed: ${candleBody >= 0 ? 'GREEN' : 'RED'} candle (${candleBody.toFixed(2)}%)`);
     }
     
