@@ -12,7 +12,7 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.172556,    // Reset 2026-02-21 4:45PM (after testing, -12.5% session before trailing stop)
+  STARTING_CAPITAL_SOL: 0.145752,    // Reset 2026-02-21 4:45PM (after testing, -12.5% session before trailing stop)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 70,        // 25% per trade (conservative risk management)
