@@ -9,8 +9,9 @@ export default {
   // EXTREME MODE Lessons Applied
   STRATEGY: 'SIMPLE', // Proven dip-buying
   
-  // Entry - AGGRESSIVE
-  POSITION_SIZE_PCT: 75, // 75% of capital (all-in mentality)
+  // Entry - AGGRESSIVE  
+  STARTING_CAPITAL_SOL: 0.172556, // Consolidated from all wallets
+  POSITION_SIZE_PCT: 70, // 70% of capital per trade
   QUICK_DIP_MIN: -2.5,
   QUICK_DIP_MAX: -15, // Wider range for volatile tokens
   VOLUME_SPIKE_MIN: 1.5,
