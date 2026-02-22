@@ -489,16 +489,36 @@ class WickBotFast {
       const holdTime = Date.now() - position.entryTime;
       const holdTimeSec = holdTime / 1000;
       
-      // FIXED TP/SL EXIT LOGIC (2026-02-19 18:35)
-      // Priority: TP2 → TP1 → Max Hold → SL → Emergency
+      // Track peak price for trailing stop (2026-02-21)
+      if (!position.peakPrice || currentPrice > position.peakPrice) {
+        position.peakPrice = currentPrice;
+        position.peakPnl = pnl;
+      }
+      
+      // TRAILING STOP LOGIC (2026-02-21) - Ride trends, lock in gains
+      const trailingActive = config.ENABLE_TRAILING_STOP && pnl >= config.TRAILING_ACTIVATION;
+      
+      if (trailingActive) {
+        const trailFromPeak = ((position.peakPrice - currentPrice) / position.peakPrice) * 100;
+        const shouldExit = trailFromPeak >= config.TRAILING_DISTANCE;
+        
+        if (shouldExit) {
+          console.log(`\n📉 TRAILING STOP! Peak: +${position.peakPnl.toFixed(2)}%, Now: +${pnl.toFixed(2)}% (trail: ${trailFromPeak.toFixed(2)}%)`);
+          await this.executeSell(position, currentPrice, 'TRAILING_STOP');
+          continue;
+        }
+      }
+      
+      // FIXED TP/SL EXIT LOGIC (2026-02-19 18:35 + trailing stop update)
+      // Priority: TP2 → Trailing Stop → TP1 → Max Hold → SL → Emergency
       
       // 1. TAKE PROFIT 2 - Quick exit at +4%
       if (pnl >= config.QUICK_TP_2) {
         console.log(`\n🎯 QUICK TP2! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
         await this.executeSell(position, currentPrice, 'QUICK_TP2');
       }
-      // 2. TAKE PROFIT 1 - Quick exit at +2%
-      else if (pnl >= config.QUICK_TP_1) {
+      // 2. TAKE PROFIT 1 - If no trailing, exit at +2%
+      else if (pnl >= config.QUICK_TP_1 && !config.ENABLE_TRAILING_STOP) {
         console.log(`\n💚 QUICK TP1! +${pnl.toFixed(2)}% in ${holdTimeSec.toFixed(0)}s`);
         await this.executeSell(position, currentPrice, 'QUICK_TP1');
       }

@@ -15,7 +15,7 @@ export const config = {
   STARTING_CAPITAL_SOL: 0.055244,    // Reset 2026-02-21 4:06PM (after price data bug, -4.1% session)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 55,        // 25% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 60,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!
@@ -44,11 +44,16 @@ export const config = {
   USE_SIGNAL_EXITS: false,      // Disabled - use fixed TP/SL instead
   SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
-  // MICRO-SCALP MODE (2026-02-19) - Based on trade analysis + FEE OPTIMIZATION
-  QUICK_TP_1: 2.0,              // First profit target (adjusted for fees - was 1.5%)
-  QUICK_TP_2: 4.0,              // Second profit target (adjusted for fees - was 3.0%)
-  QUICK_SL: 2.0,                // Tight stop loss (cut losses fast)
-  MAX_HOLD_TIME_SEC: 300,       // 5min max hold (testing sell signals - was 60s)
+  // MICRO-SCALP MODE (2026-02-21 4:45PM) - Trailing stop + wider SL
+  QUICK_TP_1: 2.0,              // First profit target (triggers trailing stop)
+  QUICK_TP_2: 4.0,              // Second profit target (if no trailing)
+  QUICK_SL: 3.0,                // Wider stop loss (was 2%, increased for volatile tokens)
+  MAX_HOLD_TIME_SEC: 300,       // 5min max hold (testing sell signals)
+  
+  // Trailing Stop (NEW - 2026-02-21)
+  ENABLE_TRAILING_STOP: true,   // Activate trailing stop to ride trends
+  TRAILING_ACTIVATION: 2.0,     // Start trailing at +2% profit
+  TRAILING_DISTANCE: 1.0,       // Trail 1% behind peak price
   
   // Safety stops (BACKUP ONLY - extreme caps, not targets)
   SAFETY_TP_PCT: 20,            // Extreme profit cap (safety net, not target)
