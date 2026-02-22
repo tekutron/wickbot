@@ -12,7 +12,7 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.057608,    // Reset 2026-02-21 3:50PM (recovered +0.033 SOL from stuck Lobstefeller position)
+  STARTING_CAPITAL_SOL: 0.055244,    // Reset 2026-02-21 4:06PM (after price data bug, -4.1% session)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
   POSITION_SIZE_PCT: 55,        // 25% per trade (conservative risk management)
