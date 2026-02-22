@@ -457,7 +457,32 @@ class WickBotFast {
       return;
     }
     
-    const currentPrice = candle.close;
+    // CRITICAL FIX (2026-02-21): Use Jupiter quote for current price, NOT candle data
+    // Candle data from DexScreener is synthetic/stale, causes false SL triggers
+    let currentPrice = candle.close;
+    
+    // Get real-time price from Jupiter for custom tokens
+    if (config.isCustomTokenMode() && positions.length > 0) {
+      try {
+        const position = positions[0];
+        const quote = await this.jupiterSwap.getQuote(
+          config.CUSTOM_TOKEN_ADDRESS,
+          config.TOKEN_ADDRESS_SOL,
+          position.amountTokenRaw,
+          position.tokenDecimals,
+          9
+        );
+        if (quote && quote.outAmount) {
+          // Calculate price: SOL received / tokens sold
+          const solOut = quote.outAmount / 1e9;
+          const tokensIn = position.amountTokenRaw / Math.pow(10, position.tokenDecimals);
+          currentPrice = solOut / tokensIn;
+          console.log(`   📊 Real-time price: $${currentPrice.toFixed(8)} (Jupiter quote)`);
+        }
+      } catch (err) {
+        console.log(`   ⚠️  Failed to get real-time price, using candle: ${err.message}`);
+      }
+    }
     
     for (const position of positions) {
       const pnl = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
