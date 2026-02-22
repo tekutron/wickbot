@@ -12,10 +12,10 @@ export const config = {
   PAIR: 'SOL/USDC',
   TOKEN_ADDRESS_SOL: 'So11111111111111111111111111111111111111112',
   TOKEN_ADDRESS_USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  STARTING_CAPITAL_SOL: 0.048350,    // Reset 2026-02-21 4:45PM (after testing, -12.5% session before trailing stop)
+  STARTING_CAPITAL_SOL: 0.172556,    // Reset 2026-02-21 4:45PM (after testing, -12.5% session before trailing stop)
   
   // Position Sizing & Risk (SCALPING MODE - 2026-02-16 16:15)
-  POSITION_SIZE_PCT: 60,        // 25% per trade (conservative risk management)
+  POSITION_SIZE_PCT: 70,        // 25% per trade (conservative risk management)
   MAX_POSITIONS: 1,             // One position at a time (focused trading)
   
   // Circuit Breakers (NEW 2026-02-19 17:11) - Stop the bleeding!
@@ -25,7 +25,7 @@ export const config = {
   COOLDOWN_AFTER_STOP_MIN: 30,        // Wait 30min before allowing restart
   
   // Transaction Settings (2026-02-20 FEE OPTIMIZATION v2)
-  PRIORITY_FEE_LAMPORTS: 50000,  // 0.00005 SOL priority fee (50% further reduction - micro-scalp optimization)
+  PRIORITY_FEE_LAMPORTS: 800000,  // 0.00005 SOL priority fee (50% further reduction - micro-scalp optimization)
   
   // Slippage Protection (2026-02-19 FLAT 5% SLIPPAGE)
   SLIPPAGE_PROFIT_BPS: 500,       // 5% max slippage on profitable exits
@@ -45,15 +45,15 @@ export const config = {
   SIGNAL_EXIT_SCORE: 50,        // Legacy pattern-based exit score
   
   // MICRO-SCALP MODE (2026-02-21 4:45PM) - Trailing stop + wider SL
-  QUICK_TP_1: 2.0,              // First profit target (triggers trailing stop)
-  QUICK_TP_2: 4.0,              // Second profit target (if no trailing)
-  QUICK_SL: 3.0,                // Wider stop loss (was 2%, increased for volatile tokens)
-  MAX_HOLD_TIME_SEC: 300,       // 5min max hold (testing sell signals)
+  QUICK_TP1: 15,              // First profit target (triggers trailing stop)
+  QUICK_TP2: 30,              // Second profit target (if no trailing)
+  QUICK_SL: 8.0,                // Wider stop loss (was 2%, increased for volatile tokens)
+  MAX_HOLD_TIME_SEC: 600,       // 5min max hold (testing sell signals)
   
   // Trailing Stop (NEW - 2026-02-21)
   ENABLE_TRAILING_STOP: true,   // Activate trailing stop to ride trends
-  TRAILING_ACTIVATION: 2.0,     // Start trailing at +2% profit
-  TRAILING_DISTANCE: 1.0,       // Trail 1% behind peak price
+  TRAILING_ACTIVATION: 15.0,     // Start trailing at +2% profit
+  TRAILING_DISTANCE: 3.0,       // Trail 1% behind peak price
   
   // Safety stops (BACKUP ONLY - extreme caps, not targets)
   SAFETY_TP_PCT: 20,            // Extreme profit cap (safety net, not target)
@@ -131,7 +131,7 @@ export const config = {
   // Data Source
   BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '2394a19e6300480289d752fe804ab0c7',
   BIRDEYE_BASE_URL: 'https://public-api.birdeye.so',
-  POLL_INTERVAL_MS: 5000,       // FAST MODE: Check every 5s (was 20s, 4x faster)
+  POLL_INTERVAL_MS: 3000,       // FAST MODE: Check every 5s (was 20s, 4x faster)
   
   // RPC
   RPC_URL: process.env.HELIUS_RPC_URL || process.env.SOLANA_RPC || 'https://api.mainnet-beta.solana.com',
