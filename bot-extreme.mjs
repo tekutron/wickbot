@@ -15,13 +15,13 @@
 import WebSocket from 'ws';
 import { Connection, PublicKey, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import fs from 'fs';
-import { swapTokens } from './executor/jupiter-swap.mjs';
+import JupiterSwap from './executor/jupiter-swap.mjs';
 
 // ==================== CONFIG ====================
 const CONFIG = {
   // Entry
-  BUY_AMOUNT_SOL: 0.027, // 60% of capital
-  PRIORITY_FEE_SOL: 0.001, // 20x higher for speed!
+  BUY_AMOUNT_SOL: 0.003, // ADJUSTED for low balance
+  PRIORITY_FEE_SOL: 0.0005, // Reduced to conserve capital
   MAX_TOKEN_AGE_SEC: 5, // Only super fresh tokens
   MIN_INITIAL_BUY: 0.01, // Creator must buy ≥0.01 SOL
   
@@ -46,7 +46,7 @@ const CONFIG = {
   
   // Wallet
   RPC_URL: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
-  WALLET_PATH: process.env.WALLET_PATH || '/home/j/.openclaw/wickbot/wallet.json',
+  WALLET_PATH: process.env.WALLET_PATH || '/home/j/.openclaw/wickbot/wallets/wickbot_wallet.json',
   
   // PumpPortal
   PUMPPORTAL_WS: 'wss://pumpportal.fun/api/data',
@@ -57,6 +57,7 @@ const state = {
   connection: null,
   wallet: null,
   walletPubkey: null,
+  jupiter: null,
   position: null,
   startCapital: 0,
   currentCapital: 0,
@@ -102,12 +103,15 @@ async function executeBuy(tokenMint, tokenData) {
   
   try {
     // Execute buy via Jupiter
-    const result = await swapTokens(
+    const amountLamports = Math.floor(CONFIG.BUY_AMOUNT_SOL * LAMPORTS_PER_SOL);
+    const result = await state.jupiter.swap(
       SOL_MINT,
       tokenMint,
-      CONFIG.BUY_AMOUNT_SOL * LAMPORTS_PER_SOL,
-      CONFIG.SLIPPAGE_BPS,
-      CONFIG.PRIORITY_FEE_SOL * LAMPORTS_PER_SOL
+      amountLamports,
+      9, // SOL decimals
+      9, // Token decimals (assume 9)
+      'SWAP',
+      CONFIG.SLIPPAGE_BPS
     );
     
     if (!result.success) {
@@ -116,18 +120,21 @@ async function executeBuy(tokenMint, tokenData) {
     }
     
     log(`✅ BUY EXECUTED: ${result.signature}`);
-    log(`   Input: ${(result.inputAmount / LAMPORTS_PER_SOL).toFixed(6)} SOL`);
-    log(`   Output: ${result.outputAmount.toLocaleString()} ${tokenData.symbol}`);
+    log(`   Input: ${result.amountIn} SOL`);
+    log(`   Output: ${result.amountOut} ${tokenData.symbol}`);
+    log(`   Price: $${result.price.toFixed(6)}`);
     
     // Save position
+    const tokensReceived = result.amountOutRaw; // Raw token amount
     state.position = {
       mint: tokenMint,
       symbol: tokenData.symbol,
       name: tokenData.name,
       entryTime: Date.now(),
-      entryPrice: result.inputAmount / result.outputAmount, // SOL per token
-      initialTokens: result.outputAmount,
-      currentTokens: result.outputAmount,
+      entryPrice: CONFIG.BUY_AMOUNT_SOL / tokensReceived, // SOL per token
+      entryPriceUSD: result.price, // USD per token
+      initialTokens: tokensReceived,
+      currentTokens: tokensReceived,
       soldTP1: false,
       soldTP2: false,
       bondingCurve: tokenData.bondingCurve || null,
@@ -136,8 +143,8 @@ async function executeBuy(tokenMint, tokenData) {
     state.tradesExecuted++;
     saveState();
     
-    log(`📊 Position opened: ${state.position.currentTokens.toLocaleString()} ${tokenData.symbol}`);
-    log(`   Entry price: ${state.position.entryPrice.toFixed(12)} SOL/token`);
+    log(`📊 Position opened: ${(state.position.currentTokens / 1e9).toFixed(4)} ${tokenData.symbol}`);
+    log(`   Entry price: $${state.position.entryPriceUSD.toFixed(6)}/token`);
     
     // Start monitoring
     monitorPosition();
@@ -156,12 +163,14 @@ async function executeSell(percent, reason) {
   log(`💰 SELLING ${percent}% (${tokensToSell.toLocaleString()} ${state.position.symbol}) - ${reason}`);
   
   try {
-    const result = await swapTokens(
+    const result = await state.jupiter.swap(
       state.position.mint,
       SOL_MINT,
       tokensToSell,
-      CONFIG.SLIPPAGE_BPS,
-      CONFIG.PRIORITY_FEE_SOL * LAMPORTS_PER_SOL
+      9, // Token decimals
+      9, // SOL decimals
+      'SWAP',
+      CONFIG.SLIPPAGE_BPS
     );
     
     if (!result.success) {
@@ -169,12 +178,14 @@ async function executeSell(percent, reason) {
       return false;
     }
     
-    const solReceived = result.outputAmount / LAMPORTS_PER_SOL;
-    const pnlPercent = ((result.outputAmount / result.inputAmount) / state.position.entryPrice - 1) * 100;
+    const solReceived = parseFloat(result.amountOut); // Already in SOL
+    const exitPriceUSD = result.price; // USD per token
+    const pnlPercent = ((exitPriceUSD / state.position.entryPriceUSD) - 1) * 100;
     
     log(`✅ SELL EXECUTED: ${result.signature}`);
-    log(`   Sold: ${tokensToSell.toLocaleString()} ${state.position.symbol}`);
+    log(`   Sold: ${(tokensToSell / 1e9).toFixed(4)} ${state.position.symbol}`);
     log(`   Received: ${solReceived.toFixed(6)} SOL`);
+    log(`   Exit price: $${exitPriceUSD.toFixed(6)}`);
     log(`   P&L: ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`);
     
     state.position.currentTokens -= tokensToSell;
@@ -205,12 +216,18 @@ async function executeSell(percent, reason) {
 async function getCurrentPrice() {
   // Get current price via Jupiter quote
   try {
-    const response = await fetch(
-      `https://quote-api.jup.ag/v6/quote?inputMint=${state.position.mint}&outputMint=${SOL_MINT}&amount=1000000`
+    const quote = await state.jupiter.getQuote(
+      state.position.mint,
+      SOL_MINT,
+      1e9, // 1 token in base units
+      9,
+      9
     );
-    const data = await response.json();
-    if (data.outAmount) {
-      return parseFloat(data.outAmount) / 1000000; // SOL per 1M tokens
+    if (quote.price) {
+      return quote.price; // USD per token
+    }
+    if (quote.error) {
+      log(`⚠️ Price quote error: ${quote.error}`);
     }
   } catch (error) {
     log(`⚠️ Price fetch error: ${error.message}`);
@@ -232,7 +249,7 @@ function monitorPosition() {
     const currentPrice = await getCurrentPrice();
     if (!currentPrice) return;
     
-    const pnlPercent = ((currentPrice / state.position.entryPrice) - 1) * 100;
+    const pnlPercent = ((currentPrice / state.position.entryPriceUSD) - 1) * 100;
     const holdTime = Math.floor((Date.now() - state.position.entryTime) / 1000);
     
     log(`📊 ${state.position.symbol}: ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)}% | Hold: ${holdTime}s`);
@@ -284,8 +301,13 @@ function startPumpPortalListener() {
       log(`🆕 New token: ${tokenData.symbol} - ${tokenData.name}`);
       log(`   Creator buy: ${tokenData.initialBuy?.toFixed(6) || 'N/A'} SOL`);
       
-      // INSTANT BUY (no analysis!)
-      await executeBuy(tokenData.mint, tokenData);
+      // DELAYED BUY: Wait 15s for Jupiter to establish routes
+      log(`   ⏳ Waiting 15s for liquidity...`);
+      setTimeout(async () => {
+        if (!state.position) { // Check we're still available
+          await executeBuy(tokenData.mint, tokenData);
+        }
+      }, 15000);
       
     } catch (error) {
       log(`⚠️ Message parse error: ${error.message}`);
@@ -318,6 +340,10 @@ async function main() {
   
   // Connect to RPC
   state.connection = new Connection(CONFIG.RPC_URL, 'confirmed');
+  
+  // Initialize Jupiter
+  state.jupiter = new JupiterSwap();
+  await state.jupiter.initialize(CONFIG.WALLET_PATH, CONFIG.RPC_URL);
   
   // Get starting capital
   state.startCapital = await getBalance();
